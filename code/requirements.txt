@@ -1,0 +1,26 @@
+# gym
+
+gym
+gym[classic_control]
+#gym[atari]
+blackhc.mdp
+
+
+#chainerrl not professional
+
+# pytorch based
+
+#pytorch
+
+
+# tensorflow based
+
+#tensorflow
+
+#tensorforce
+
+#keras-rl not working
+h5py
+pillow 
+
+#garage
