@@ -1,39 +1,13 @@
 import numpy as np
 from gym import spaces
 
+from wenvs.utils import dim_of_space, discrete_space_size
 
-def dim_of_space(space):
-    dim = 0
-    if isinstance(space, spaces.Tuple):            
-        for s in space.spaces:
-            if isinstance(s, spaces.Box):
-                dim += np.prod(s.shape)
-            else:
-                dim += 1 
-    else:
-        if isinstance(space, spaces.Box):
-            dim += np.prod(space.shape)
-        else:
-            dim += 1
-    
-    return dim
-
-
-def discrete_space_dim(space):
-    dims = [] 
-    if isinstance(space, spaces.Tuple):
-        for s in space.spaces:
-            dims += [s.n]
-    else:
-            dims += [space.n]
-    
-    return dims
-
-
-class WrapperFakeEnv:
+class WrapperEnv:
 
     def __init__(self, env, n_fake_features=0, n_combinations=0, 
-    n_fake_actions=0, continuous_state=False, continuous_actions=False, size_discrete_space=20):
+    n_fake_actions=0, continuous_state=False, continuous_actions=False, 
+    size_discrete_space=20):
 
         self.env=env
         self.n_fake_features = n_fake_features
@@ -72,9 +46,11 @@ class WrapperFakeEnv:
                 action_space = [self.orig_act_space]
 
             if self.continuous_actions:
-                box = [spaces.Box(low=-inf, high=inf, shape=(self.n_fake_actions,), dtype=np.float32)]
+                box = [spaces.Box(low=-inf, high=inf, shape=(
+                    self.n_fake_actions,), dtype=np.float32)]
             else:
-                box = [spaces.Discrete(self.size_discrete_space) for _ in range(self.n_fake_actions)]
+                box = [spaces.Discrete(self.size_discrete_space) for _ in range(
+                    self.n_fake_actions)]
 
             action_space = action_space + box
             self.action_space = spaces.Tuple(action_space)
@@ -88,9 +64,11 @@ class WrapperFakeEnv:
                 obs_space = [self.orig_obs_space]
 
             if self.continuous_state:
-                box = [spaces.Box(low=-inf, high=inf, shape=(self.total_fake_features,), dtype=np.float32)]
+                box = [spaces.Box(low=-inf, high=inf, shape=(
+                    self.total_fake_features,), dtype=np.float32)]
             else:
-                box = [spaces.Discrete(self.size_discrete_space) for _ in range(self.total_fake_features)]
+                box = [spaces.Discrete(self.size_discrete_space) for _ in range(
+                    self.total_fake_features)]
                 
             obs_space = obs_space + box
             self.observation_space = spaces.Tuple(obs_space)
@@ -98,9 +76,9 @@ class WrapperFakeEnv:
             self.observation_space = self.orig_obs_space
 
         if not self.continuous_state:
-            self.discrete_obs_space = discrete_space_dim(self.observation_space)
+            self.discrete_obs_space = discrete_space_size(self.observation_space)
         if not self.continuous_actions:
-            self.discrete_acts_space = discrete_space_dim(self.action_space)
+            self.discrete_acts_space = discrete_space_size(self.action_space)
 
 
     def _wrap_obs(self, obs):
@@ -116,7 +94,8 @@ class WrapperFakeEnv:
             if self.continuous_state:
                 obs_add.append(np.random.normal(size=self.n_fake_features))
             else:
-                obs_add.append(np.random.randint(self.size_discrete_space, size=self.n_fake_features))
+                obs_add.append(np.random.randint(
+                    self.size_discrete_space, size=self.n_fake_features))
 
         if len(obs_add) == 0:
             return obs
@@ -169,9 +148,10 @@ class WrapperFakeEnv:
         return np.ravel_multi_index(obs, self.discrete_acts_space)
 
 
-    def run_episode(self, policy=None, render=True):
-        def render():
+    def run_episode(self, policy=None, render=False):
+        def render_it():
             if render:
+                print("ok", render)
                 self.env.render()
 
         if policy is None:
@@ -182,13 +162,14 @@ class WrapperFakeEnv:
         obs = self.reset()
         for _ in range(200):
             ss.append(obs)
-            render()
+            render_it()
             a = policy(obs)
             acts.append(a)
             obs, r, done, info = self.step(a)
             rs.append(r)
             if done:
-                render()
+                ss.append(obs)
+                render_it()
                 break
 
         return np.array(ss), np.array(acts), np.array(rs)

@@ -1,26 +1,19 @@
-# gym
+# envs
 
 gym
 gym[classic_control]
 #gym[atari]
 blackhc.mdp
 
+# algorithms
 
+#openai/baseline too complex for now
 #chainerrl not professional
+#tensorforce maybe
+#garage maybe
 
-# pytorch based
-
-#pytorch
-
-
-# tensorflow based
-
-#tensorflow
-
-#tensorforce
-
-#keras-rl not working
+#tensorflow (gpu eventually)
+keras-rl
 h5py
-pillow 
+pillow
 
-#garage

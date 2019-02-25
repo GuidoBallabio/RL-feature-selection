@@ -1,5 +1,5 @@
 import numpy as np
-
+from gym import spaces
 
 def greedy_pi(Q):
     policy = (Q.max(axis=1, keepdims=True) == Q).astype(np.int)
@@ -76,3 +76,32 @@ def Q_learing_multidim(env, control_space, policy = eps_greedy_multidim, iterMax
             s = env.reset()
         
     return Q, greedy_pi(Q)
+    
+    
+def dim_of_space(space):
+    dim = 0
+    if isinstance(space, spaces.Tuple):            
+        for s in space.spaces:
+            if isinstance(s, spaces.Box):
+                dim += np.prod(s.shape)
+            else:
+                dim += 1 
+    else:
+        if isinstance(space, spaces.Box):
+            dim += np.prod(space.shape)
+        else:
+            dim += 1
+    
+    return dim
+
+
+def discrete_space_size(space):
+    dims = [] 
+    if isinstance(space, spaces.Tuple):
+        for s in space.spaces:
+            dims += [s.n]
+    else:
+            dims += [space.n]
+    
+    return dims
+
