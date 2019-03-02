@@ -7,13 +7,15 @@ blackhc.mdp
 
 # algorithms
 
-#openai/baseline too complex for now
+#stable_baselines
+#baselines not suitable library
+
 #chainerrl not professional
 #tensorforce maybe
 #garage maybe
 
 #tensorflow (gpu eventually)
-keras-rl
-h5py
-pillow
+#keras-rl
+#h5py
+#pillow
 

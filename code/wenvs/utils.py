@@ -1,8 +1,20 @@
 import numpy as np
 from gym import spaces
 
-def greedy_pi(Q):
+
+def greedy_pi(Q, keepdims=False):
     policy = (Q.max(axis=1, keepdims=True) == Q).astype(np.int)
+    if keepdims:
+        return policy
+    return policy.argmax(axis=1)
+
+
+def greedy_pi_multidim(Q, state_sizes, act_sizes, keepdims=False):
+    if keepdims:
+        policy = (Q.max(axis=tuple(len(obs_dim) + np.arange(len(acts_dim))), keepdims=True) == Q).astype(np.int)
+    else:
+        q_s_max = Q.reshape(*state_sizes, -1).argmax(-1)
+        policy = np.stack(np.unravel_index(q_s_max, act_sizes), axis=-1)
     return policy
 
 
@@ -49,19 +61,18 @@ def Q_learing(env, control_space, policy = eps_greedy, iterMax = int(1e5), gamma
     return Q, greedy_pi(Q)
 
 
-def Q_learing_multidim(env, control_space, policy = eps_greedy_multidim, iterMax = int(1e5), gamma = 0.9):
-    
-    n_states, n_actions = control_space    
+def Q_learing_multidim(env, state_sizes, act_sizes, policy = eps_greedy_multidim, iterMax = int(1e5), gamma = 0.9):
+
     s = env.reset()
     s_t = tuple(s)
-    Q = np.zeros(control_space)
+    Q = np.zeros(state_sizes + act_sizes)
 
     for m in range(iterMax):
         α = 1 - m/iterMax
         ϵ = α**2
 
 
-        a = policy(env, s_t, ϵ, Q)
+        a = policy(env, s_t, 1, Q)
         a_t = tuple(a)
 
         s_next, r, done, _ = env.step(a)
@@ -75,8 +86,8 @@ def Q_learing_multidim(env, control_space, policy = eps_greedy_multidim, iterMax
         if done:
             s = env.reset()
         
-    return Q, greedy_pi(Q)
-    
+    return Q, greedy_pi_multidim(Q, state_sizes, act_sizes)
+
     
 def dim_of_space(space):
     dim = 0
@@ -104,4 +115,3 @@ def discrete_space_size(space):
             dims += [space.n]
     
     return dims
-

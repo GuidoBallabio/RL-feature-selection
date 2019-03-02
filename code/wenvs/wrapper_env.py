@@ -3,13 +3,19 @@ from gym import spaces
 
 from wenvs.utils import dim_of_space, discrete_space_size
 
+
 class WrapperEnv:
 
     def __init__(self, env, n_fake_features=0, n_combinations=0, 
     n_fake_actions=0, continuous_state=False, continuous_actions=False, 
-    size_discrete_space=20):
+    size_discrete_space=5):
 
         self.env=env
+        self.metadata = env.metadata
+        self.reward_range = env.reward_range
+        self.spec = env.spec
+        self.unwrapped = self
+        
         self.n_fake_features = n_fake_features
         self.n_combinations = n_combinations
         self.orig_obs_space = env.observation_space
@@ -21,7 +27,7 @@ class WrapperEnv:
         self.size_discrete_space = size_discrete_space
         
         if isinstance(self.orig_obs_space, spaces.Tuple):
-            assert not np.dtype('float32') in [x.dtype for x in self.orig_obs_space.space] or self.continuous_state, 'Must set continuous_state'
+            assert not np.dtype('float32') in [x.dtype for x in self.orig_obs_space.spaces] or self.continuous_state, 'Must set continuous_state'
         else:
             assert not np.dtype('float32') in [self.orig_obs_space.dtype] or self.continuous_state, 'Must set continuous_state'
 
@@ -151,8 +157,7 @@ class WrapperEnv:
     def run_episode(self, policy=None, render=False):
         def render_it():
             if render:
-                print("ok", render)
-                self.env.render()
+                self.render()
 
         if policy is None:
             policy = lambda obs: self.action_space.sample()
@@ -183,8 +188,29 @@ class WrapperEnv:
         return self._wrap_obs(obs), r, done, info
 
 
+    def seed(self, seed=None):
+        return self.env.seed(seed)
+
+
+    def render(self, mode='human', **kwargs):
+        self.env.render(mode=mode, **kwargs)
+
+
     def reset(self):
         return self._wrap_obs(self.env.reset())
-        
+
+
     def close(self):
         return self.env.close()
+
+
+    def configure(self, *args, **kwargs):
+        pass
+
+
+    def __del__(self):
+        self.close()
+
+
+    def __str__(self):
+        return '<{} instance>'.format(type(self).__name__)
