@@ -93,12 +93,9 @@ def dim_of_space(space):
     dim = 0
     if isinstance(space, spaces.Tuple):            
         for s in space.spaces:
-            if isinstance(s, spaces.Box):
-                dim += np.prod(s.shape)
-            else:
-                dim += 1 
+            dim += dim_of_space(s)
     else:
-        if isinstance(space, spaces.Box):
+        if isinstance(space, spaces.Box) or isinstance(space, spaces.MultiDiscrete):
             dim += np.prod(space.shape)
         else:
             dim += 1
@@ -110,8 +107,10 @@ def discrete_space_size(space):
     dims = [] 
     if isinstance(space, spaces.Tuple):
         for s in space.spaces:
-            dims += [s.n]
+            dims += discrete_space_size(s)
+    elif isinstance(space, spaces.MultiDiscrete):
+        dims += space.nvec.tolist()
     else:
-            dims += [space.n]
+        dims += [space.n]
     
     return dims

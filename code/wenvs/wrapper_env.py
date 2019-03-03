@@ -27,9 +27,9 @@ class WrapperEnv:
         self.size_discrete_space = size_discrete_space
         
         if isinstance(self.orig_obs_space, spaces.Tuple):
-            assert not np.dtype('float32') in [x.dtype for x in self.orig_obs_space.spaces] or self.continuous_state, 'Must set continuous_state'
+            assert (np.dtype('float32') in [x.dtype for x in self.orig_obs_space.spaces]) == self.continuous_state, 'Must set continuous_state properly'
         else:
-            assert not np.dtype('float32') in [self.orig_obs_space.dtype] or self.continuous_state, 'Must set continuous_state'
+            assert (np.dtype('float32') in [self.orig_obs_space.dtype]) == self.continuous_state, 'Must set continuous_state properly'
 
         self.state_dim = dim_of_space(self.orig_obs_space)
 
@@ -37,47 +37,42 @@ class WrapperEnv:
             assert self.state_dim / n_combinations >= 1, f'State dimension too small for combinations: {self.state_dim}'
 
         self.state_dim += self.total_fake_features
-        self.action_dim = dim_of_space(self.orig_act_space)
         
         self._setup()
+        
+        self.action_dim = dim_of_space(self.action_space)
 
 
     def _setup(self):
         inf = np.finfo(np.float32).max
 
         if self.n_fake_actions > 0:
-            if isinstance(self.orig_act_space, spaces.Tuple):
-                action_space = self.orig_act_space.spaces
-            else:
-                action_space = [self.orig_act_space]
-
             if self.continuous_actions:
-                box = [spaces.Box(low=-inf, high=inf, shape=(
-                    self.n_fake_actions,), dtype=np.float32)]
+                low = np.concatenate([self.orig_act_space.low, *[-inf for _ in range(self.n_fake_actions)]], axis=None).ravel() 
+                high = np.concatenate([self.orig_act_space.high, *[inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
+                self.action_space = spaces.Box(low=low , high=high, dtype=np.float32)
             else:
-                box = [spaces.Discrete(self.size_discrete_space) for _ in range(
-                    self.n_fake_actions)]
-
-            action_space = action_space + box
-            self.action_space = spaces.Tuple(action_space)
+                if isinstance(self.orig_act_space, spaces.MultiDiscrete):
+                    init = self.orig_act_space.nvec.tolist()
+                else:
+                    init = [self.orig_act_space.n]
+                    self.action_space = spaces.MultiDiscrete( init +
+                        [self.size_discrete_space for _ in range(self.n_fake_actions)])
         else:
             self.action_space = self.orig_act_space
 
         if self.n_fake_features > 0 or self.n_combinations > 0:
-            if isinstance(self.orig_obs_space, spaces.Tuple):
-                obs_space = self.orig_obs_space.spaces
-            else:
-                obs_space = [self.orig_obs_space]
-
             if self.continuous_state:
-                box = [spaces.Box(low=-inf, high=inf, shape=(
-                    self.total_fake_features,), dtype=np.float32)]
+                low = np.concatenate([self.orig_obs_space.low, *[-inf for _ in range(self.total_fake_features)]], axis=None).ravel() 
+                high = np.concatenate([self.orig_obs_space.high, *[inf for _ in range(self.total_fake_features)]], axis=None).ravel()
+                self.observation_space = spaces.Box(low=low , high=high, dtype=np.float32)
             else:
-                box = [spaces.Discrete(self.size_discrete_space) for _ in range(
-                    self.total_fake_features)]
-                
-            obs_space = obs_space + box
-            self.observation_space = spaces.Tuple(obs_space)
+                if isinstance(self.orig_obs_space, spaces.MultiDiscrete):
+                    init = self.orig_obs_space.nvec.tolist()
+                else:
+                    init = [self.orig_obs_space.n]
+                self.observation_space = spaces.MultiDiscrete( init +
+                        [self.size_discrete_space for _ in range(self.total_fake_features)])
         else:
             self.observation_space = self.orig_obs_space
 
@@ -112,12 +107,11 @@ class WrapperEnv:
     def _unwrap_obs(self, obs):
         assert self.observation_space.contains(obs), "Invalid Observation" 
         if self.n_combinations > 0 or self.n_fake_features > 0:
-            if self.continuous_state:
-                obs = obs[:-1]
-            else:
-                obs = obs[:-self.total_fake_features]
+            obs = obs[:-self.total_fake_features]
             if len(obs) == 1:
                 obs = obs[0]
+                if not self.continuous_state:
+                    obs = int(obs)
 
         return obs
 
@@ -125,20 +119,19 @@ class WrapperEnv:
     def _unwrap_act(self, action):
         assert self.action_space.contains(action), "Invalid Action" 
         if self.n_fake_actions > 0:
-            if self.continuous_actions:
-                action = action[:-1]
-            else:
-                action = action[:-self.n_fake_actions]
+            action = action[:-self.n_fake_actions]
             if len(action) == 1:
                 action = action[0]
+                if not self.continuous_actions:
+                    action = int(action)
 
         return action
         
 
     def decode_act(self, act_en):
-        act = np.unravel_index(act_en, self.discrete_acts_space)
-        if len(act) == 1:
-            act = act[0]
+        act = np.array(np.unravel_index(act_en, self.discrete_acts_space)).T
+        if act.size == 1:
+            act = act.flat[0]
         return act
 
 
@@ -148,10 +141,10 @@ class WrapperEnv:
         return np.ravel_multi_index(obs, self.discrete_obs_space)
 
 
-    def encode_act(self, obs):
-        if self.state_dim == 1:
-            obs = [obs]
-        return np.ravel_multi_index(obs, self.discrete_acts_space)
+    def encode_act(self, act):
+        if self.action_dim == 1:
+            act = [act]
+        return np.ravel_multi_index(act, self.discrete_acts_space)
 
 
     def run_episode(self, policy=None, render=False):
