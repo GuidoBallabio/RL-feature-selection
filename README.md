@@ -7,6 +7,7 @@ requirements.txt in code
 To build docs:
 
 ```sh
+cd docs
 tup
 ```
 

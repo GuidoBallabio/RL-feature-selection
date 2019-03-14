@@ -8,14 +8,7 @@ blackhc.mdp
 # algorithms
 
 #stable_baselines
-#baselines not suitable library
-
-#chainerrl not professional
-#tensorforce maybe
+#baselines not a library
 #garage maybe
 
 #tensorflow (gpu eventually)
-#keras-rl
-#h5py
-#pillow
-
