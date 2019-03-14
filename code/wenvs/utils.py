@@ -1,3 +1,7 @@
+"""Various helpers for gym.Space and quick tests of discrete gym.Envs
+"""
+
+
 import numpy as np
 from gym import spaces
 

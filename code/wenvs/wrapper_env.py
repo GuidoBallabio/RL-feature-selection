@@ -14,12 +14,6 @@ class WrapperEnv:
     Of course the step function expects a proper action as dictated by the action space declared but 
     ignores features not in the original environment.
     
-    A side from constructot same interface as :obj:`gym.Env`, with on top:
-    
-    Attributes:
-        env (:obj:`gym.Env`): original env
-        fun_list: as described in __init__
-
     Args:
         env (:obj:`gym.Env`): Environment to be wrapped.
         n_fake_features (int, optional): Number of fake features to be added.
@@ -31,6 +25,28 @@ class WrapperEnv:
             an observation as a numpy.array of shape as dictated by the observation space.
         fun_discrete_sizes (list(int)): List of sizes of spaces of features returned by functions in
             fun_list, in the same order. Required if fun_list is not None.
+    
+    A side from constructot same interface as :obj:`gym.Env`, with on top:
+    
+    Attributes:
+        env (:obj:`gym.Env`): original env.
+        orig_obs_space: original observation space.
+        orig_act_space: original state space.
+        total_fake_features (int): Total number of added features.
+        continuous_state: as described in __init__.
+        continuous_actions: as described in __init__.
+        fun_list: as described in __init__.
+        state_dim (int): Number of dimensions fo observation space ~ len(obs.shape).
+        actions_dim (int): Number of dimensions fo action space ~ len(act.shape).
+        discrete_obs_space (int): Size of the observation space ~ np.prod(observation_space.shape).
+        discrete_act_space (int): Size of the action space ~ np.prod(action_space.shape).
+        
+    Methods:
+        run_episode(policy, render, iterMax): runs an episode with given policy and eventually renders it.
+        encode_obs: encode observation in one single integer (positive), in case of discrete state.
+        encode_act: encode action in one single integer (positive), in case of discrete action space.
+        decode_act: encode action in one single integer (positive), in case of discrete action space.
+
     """
 
     def __init__(self, env, n_fake_features=0, fun_list=None, fun_discrete_sizes=None,
@@ -181,7 +197,27 @@ class WrapperEnv:
             act = [act]
         return np.ravel_multi_index(act, self.discrete_acts_space)
 
-    def run_episode(self, policy=None, render=False):
+    def run_episode(self, policy=None, render=False, iterMax=200):
+        """Run episode given a policy and eventually renders it.
+        
+        The episode is constructed using a as default a random policy and run till it's done
+        or after iterMax iterations. The complete history of states, actions and rewards is returned.
+        
+        Args:
+            policy (f(obs)->act): Policy function must take as input an observation as described by the space,
+                and must return an action from the action_space. The default is a random policy.
+            render (bool): Boolean that indicates if the episode has to be rendered.
+            iterMax (int): Number of max iteration after which to stop.
+            
+        Returns:
+            np.array(obs), np.array(act), np.array(int) : History of episode.
+            
+            The function returns 3 arrays that completely describe the episode: the array
+            of observation in the visited order, an array for the actions that has follow each obs
+            and the reward obtaind as consequence. The arrays have the same length (first dim)
+            From them SAR-SAR sequence can be constructed.
+        """
+
         def render_it():
             if render:
                 self.render()
@@ -191,7 +227,7 @@ class WrapperEnv:
 
         ss, acts, rs = [], [], []
         obs = self.reset()
-        for _ in range(200):
+        for _ in range(iterMax):
             ss.append(obs)
             render_it()
             a = policy(obs)
