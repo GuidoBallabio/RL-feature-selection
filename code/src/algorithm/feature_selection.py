@@ -14,35 +14,14 @@ class FeatueSelector(metaclass=abc.ABCMeta):
         self._setup()
 
     def _setup(self):
-        
         self.n_features = self.trajectories[0].shape[1] - 1
         self.id_reward = self.n_features
         self.Rmax = np.abs(np.max([np.max(t[:, self.id_reward]) for t in self.trajectories]))
         self.idMap = set(range(self.n_features))
 
-        # version with trajectory dict
-        '''
-        self.n_state_features = self.trajectories[0]['S'].shape[1]
-        self.n_action_features = self.trajectories[0]['A'].shape[1]
-        self.n_features = self.n_state_features + self.n_action_features
-        self.Rmax = np.abs(np.max([np.max(t['R']) for t in self.trajectories]))
-        self.idMap = {k: ('S', k) for k in range(self.n_state_features)}
-        self.idMap.update({k: ('A', k) for k in range(self.n_state_features, self.n_features)})
-        self.idMap.update({self.n_features: ('R', 0))
-        '''
 
-        
     def _get_arrays(ids):
         return [t[:, ids] for t in self.trajectories]
-
-        '''
-        idxs = [self.idMap[k] for k in ids]
-        s_idx = filter(lambda idx: idx[0] == 'S', idxs)
-        a_idx = filter(lambda idx: idx[0] == 'A', idxs)
-        r_idx = filter(lambda idx: idx[0] == 'R', idxs)
-        
-        return [np.hstack([t['S'][:, s_idx], t['A'][:, a_idx], t['R'][:, r_idx]) for t in self.trajectories]
-        '''
 
 
     @cachedmethod(lambda self: self.cache, key=partial(hashkey, 'cmi'))
