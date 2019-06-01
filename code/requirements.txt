@@ -1,14 +1,10 @@
-# envs
+## envs
 
 gym
 gym[classic_control]
-#gym[atari]
-blackhc.mdp
 
-# algorithms
+## algorithms
 
-#stable_baselines
-#baselines not a library
-#garage maybe
+stable_baselines
 
 #tensorflow (gpu eventually)

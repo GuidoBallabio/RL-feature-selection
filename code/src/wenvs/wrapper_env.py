@@ -1,10 +1,10 @@
 import numpy as np
-from gym import spaces
+from gym import spaces, Wrapper
 
-from wenvs.utils import dim_of_space, discrete_space_size
+from src.wenvs.utils import dim_of_space, discrete_space_size
 
 
-class WrapperEnv:
+class WrapperEnv(Wrapper):
 
     """Class to wrap gym.Env and add uncorrelated or correlated features.
 
@@ -81,10 +81,10 @@ class WrapperEnv:
             assert (np.dtype('float32') in [x.dtype for x in self.orig_act_space.spaces]
                     ) == self.continuous_actions, 'Must set continuous_actions properly'
         else:
-            assert (np.dtype('float32') in [
-                    self.orig_obs_space.dtype]) == self.continuous_state, 'Must set continuous_state properly'
-            assert (np.dtype('float32') in [
-                    self.orig_act_space.dtype]) == self.continuous_actions, 'Must set continuous_actions properly'
+            assert (np.dtype('float32') in [self.orig_obs_space.dtype]
+                    ) == self.continuous_state, 'Must set continuous_state properly'
+            assert (np.dtype('float32') in [self.orig_act_space.dtype]
+                    ) == self.continuous_actions, 'Must set continuous_actions properly'
 
         self.state_dim = dim_of_space(self.orig_obs_space) + self.total_fake_features
 
@@ -100,10 +100,10 @@ class WrapperEnv:
 
         if self.n_fake_actions > 0:
             if self.continuous_actions:
-                low = np.concatenate(
-                    [self.orig_act_space.low, *[-inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
-                high = np.concatenate(
-                    [self.orig_act_space.high, *[inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
+                low = np.concatenate([self.orig_act_space.low, 
+                    *[-inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
+                high = np.concatenate([self.orig_act_space.high, 
+                    *[inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
                 self.action_space = spaces.Box(
                     low=low, high=high, dtype=np.float32)
             else:
@@ -112,16 +112,16 @@ class WrapperEnv:
                 else:
                     init = [self.orig_act_space.n]
                     self.action_space = spaces.MultiDiscrete(init +
-                                                             [self.size_discrete_space for _ in range(self.n_fake_actions)])
+                        [self.size_discrete_space for _ in range(self.n_fake_actions)])
         else:
             self.action_space = self.orig_act_space
 
         if self.total_fake_features > 0:
             if self.continuous_state:
-                low = np.concatenate(
-                    [self.orig_obs_space.low, *[-inf for _ in range(self.total_fake_features)]], axis=None).ravel()
-                high = np.concatenate(
-                    [self.orig_obs_space.high, *[inf for _ in range(self.total_fake_features)]], axis=None).ravel()
+                low = np.concatenate(self.orig_obs_space.low, 
+                    *[-inf for _ in range(self.total_fake_features)]], axis=None).ravel()
+                high = np.concatenate([self.orig_obs_space.high, 
+                    *[inf for _ in range(self.total_fake_features)]], axis=None).ravel()
                 self.observation_space = spaces.Box(
                     low=low, high=high, dtype=np.float32)
             else:
@@ -130,7 +130,7 @@ class WrapperEnv:
                 else:
                     init = [self.orig_obs_space.n]
                 self.observation_space = spaces.MultiDiscrete(init +
-                                                              [self.size_discrete_space for _ in range(self.n_fake_features)] + self.fun_discrete_sizes)
+                    [self.size_discrete_space for _ in range(self.n_fake_features)] + self.fun_discrete_sizes)
         else:
             self.observation_space = self.orig_obs_space
 
