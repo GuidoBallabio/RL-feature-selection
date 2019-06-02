@@ -4,7 +4,6 @@
 # @Last modified time: 2019-01-07T17:16:55+01:00
 
 
-
 import abc
 import numpy as np
 from functools import partial
@@ -37,6 +36,7 @@ class EntropyMIEstimator(MIEstimator):
     """
     Basic 3H MIEstimator.
     """
+
     def __init__(self, entropyEstimator):
         self.entropyEstimator = entropyEstimator
 
@@ -60,25 +60,26 @@ def distanceInNorm(x, y, norm):
 
 def computeMIforSample(i, XYZ, XZ, YZ, Z, norm, k):
     dists = np.array(list(map(
-            lambda z: np.linalg.norm(XYZ[i] - z, norm),
-            np.delete(XYZ, i, axis=0))))
+        lambda z: np.linalg.norm(XYZ[i] - z, norm),
+        np.delete(XYZ, i, axis=0))))
     idx = np.argpartition(dists, k-1)[k-1]
     epsI = dists[idx]
 
     distsXZ = np.array(list(map(
-            lambda z: np.linalg.norm(XZ[i] - z, norm),
-            np.delete(XZ, i, axis=0))))
+        lambda z: np.linalg.norm(XZ[i] - z, norm),
+        np.delete(XZ, i, axis=0))))
     nXZ = np.sum(distsXZ < epsI) + 1
 
     distsYZ = np.array(list(map(
-            lambda z: np.linalg.norm(YZ[i] - z, norm),
-            np.delete(XZ, i, axis=0))))
+        lambda z: np.linalg.norm(YZ[i] - z, norm),
+        np.delete(XZ, i, axis=0))))
     nYZ = np.sum(distsYZ < epsI) + 1
     distsZ = np.array(list(map(
-            lambda z: np.linalg.norm(Z[i] - z, norm),
-            np.delete(Z, i, axis=0))))
+        lambda z: np.linalg.norm(Z[i] - z, norm),
+        np.delete(Z, i, axis=0))))
     nZ = np.sum(distsZ < epsI) + 1
-    print("Old eps: {0}, nXZ: {1}, nYZ: {2}, nZ:{3}".format(epsI, nXZ, nYZ, nZ))
+    print("Old eps: {0}, nXZ: {1}, nYZ: {2}, nZ:{3}".format(
+        epsI, nXZ, nYZ, nZ))
     return digamma(nXZ) + digamma(nYZ) - digamma(nZ)
 
 
@@ -88,6 +89,7 @@ class MixedRvMiEstimator(MIEstimator):
     the Radon-Nikodym derivative. For more information see:
     https://papers.nips.cc/paper/7180-estimating-mutual-information-for-discrete-continuous-mixtures.pdf
     """
+
     def __init__(self, num_neighbors, norm=2, nproc=1):
         super().__init__()
         self.k = num_neighbors
@@ -126,8 +128,10 @@ class MixedRvMiEstimator(MIEstimator):
             idx = np.argpartition(dists, self.k-1)[self.k-1]
             epsI = dists[idx]
 
-            nXZ = XZTree.query_radius(XZ[i].reshape(1, -1), epsI, count_only=True)
-            nYZ = YZTree.query_radius(YZ[i].reshape(1, -1), epsI, count_only=True)
+            nXZ = XZTree.query_radius(
+                XZ[i].reshape(1, -1), epsI, count_only=True)
+            nYZ = YZTree.query_radius(
+                YZ[i].reshape(1, -1), epsI, count_only=True)
             nZ = ZTree.query_radius(Z[i].reshape(1, -1), epsI, count_only=True)
 
             partialMis[i] = digamma(nXZ) + digamma(nYZ) - digamma(nZ)

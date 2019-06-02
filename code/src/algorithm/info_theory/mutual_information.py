@@ -28,6 +28,7 @@ class EntropyMIEstimator(MIEstimator):
     """
     Basic 3H MIEstimator.
     """
+
     def __init__(self, entropyEstimator):
         self.entropyEstimator = entropyEstimator
 
@@ -51,22 +52,22 @@ def distanceInNorm(x, y, norm):
 
 def computeMIforSample(i, XYZ, XZ, YZ, Z, norm, k):
     dists = np.array(list(map(
-            lambda z: np.linalg.norm(XYZ[i] - z, norm),
-            np.delete(XYZ, i, axis=0))))
+        lambda z: np.linalg.norm(XYZ[i] - z, norm),
+        np.delete(XYZ, i, axis=0))))
     idx = np.argpartition(dists, k-1)[k-1]
     epsI = dists[idx]
 
     distsXZ = np.array(list(map(
-            lambda z: np.linalg.norm(XZ[i] - z, norm),
-            np.delete(XZ, i, axis=0))))
+        lambda z: np.linalg.norm(XZ[i] - z, norm),
+        np.delete(XZ, i, axis=0))))
     nXZ = np.sum(distsXZ < epsI) + 1
     distsYZ = np.array(list(map(
-            lambda z: np.linalg.norm(YZ[i] - z, norm),
-            np.delete(XZ, i, axis=0))))
+        lambda z: np.linalg.norm(YZ[i] - z, norm),
+        np.delete(XZ, i, axis=0))))
     nYZ = np.sum(distsYZ < epsI) + 1
     distsZ = np.array(list(map(
-            lambda z: np.linalg.norm(Z[i] - z, norm),
-            np.delete(Z, i, axis=0))))
+        lambda z: np.linalg.norm(Z[i] - z, norm),
+        np.delete(Z, i, axis=0))))
     nZ = np.sum(distsZ < epsI) + 1
     return digamma(nXZ) + digamma(nYZ) - digamma(nZ)
 
@@ -77,6 +78,7 @@ class MixedRvMiEstimator(MIEstimator):
     the Radon-Nikodym derivative. For more information see:
     https://papers.nips.cc/paper/7180-estimating-mutual-information-for-discrete-continuous-mixtures.pdf
     """
+
     def __init__(self, num_neighbors, norm=2, nproc=1):
         super().__init__()
         self.k = num_neighbors

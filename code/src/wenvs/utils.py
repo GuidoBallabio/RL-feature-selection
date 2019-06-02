@@ -15,7 +15,8 @@ def greedy_pi(Q, keepdims=False):
 
 def greedy_pi_multidim(Q, state_sizes, act_sizes, keepdims=False):
     if keepdims:
-        policy = (Q.max(axis=tuple(len(obs_dim) + np.arange(len(acts_dim))), keepdims=True) == Q).astype(np.int)
+        policy = (Q.max(axis=tuple(len(obs_dim) + np.arange(len(acts_dim))),
+                        keepdims=True) == Q).astype(np.int)
     else:
         q_s_max = Q.reshape(*state_sizes, -1).argmax(-1)
         policy = np.stack(np.unravel_index(q_s_max, act_sizes), axis=-1)
@@ -25,10 +26,10 @@ def greedy_pi_multidim(Q, state_sizes, act_sizes, keepdims=False):
 def eps_greedy(env, s, eps, Q):
     if np.random.rand() < eps:
         return env.encode_act(env.action_space.sample())
-    currQ = Q[s,:]
+    currQ = Q[s, :]
     actions = np.argwhere(currQ == currQ.max()).flatten()
-    #actions = currQ.argmax(axis=1) only first
-    return np.random.choice(actions) # if ties on max, random one
+    # actions = currQ.argmax(axis=1) only first
+    return np.random.choice(actions)  # if ties on max, random one
 
 
 def eps_greedy_multidim(env, s_t, eps, Q):
@@ -36,10 +37,10 @@ def eps_greedy_multidim(env, s_t, eps, Q):
         return env.action_space.sample()
     currQ = Q[s_t]
     actions = np.argwhere(currQ == currQ.max()).flatten()
-    return np.random.choice(actions) # if ties on max, random one
+    return np.random.choice(actions)  # if ties on max, random one
 
 
-def Q_learing(env, control_space, policy = eps_greedy, iterMax = int(1e5), gamma = 0.9):
+def Q_learing(env, control_space, policy=eps_greedy, iterMax=int(1e5), gamma=0.9):
 
     n_states, n_actions = control_space
     s = env.encode_obs(env.reset())
@@ -55,17 +56,17 @@ def Q_learing(env, control_space, policy = eps_greedy, iterMax = int(1e5), gamma
         s_next, r, done, _ = env.step(a_d)
         s_next = env.encode_obs(s_next)
 
-        Q[s,a] = Q[s,a] + α * (r + gamma *  np.max(Q[s_next,:]) -Q[s,a]) 
+        Q[s, a] = Q[s, a] + α * (r + gamma * np.max(Q[s_next, :]) - Q[s, a])
 
         s = s_next
-        
+
         if done:
             s = env.encode_obs(env.reset())
-        
+
     return Q, greedy_pi(Q)
 
 
-def Q_learing_multidim(env, state_sizes, act_sizes, policy = eps_greedy_multidim, iterMax = int(1e5), gamma = 0.9):
+def Q_learing_multidim(env, state_sizes, act_sizes, policy=eps_greedy_multidim, iterMax=int(1e5), gamma=0.9):
 
     s = env.reset()
     s_t = tuple(s)
@@ -75,27 +76,27 @@ def Q_learing_multidim(env, state_sizes, act_sizes, policy = eps_greedy_multidim
         α = 1 - m/iterMax
         ϵ = α**2
 
-
         a = policy(env, s_t, 1, Q)
         a_t = tuple(a)
 
         s_next, r, done, _ = env.step(a)
         s_next_t = tuple(s_next)
 
-        Q[s_t][a_t] = Q[s_t][a_t] + α * (r + gamma *  np.max(Q[s_next_t]) -Q[s_t][a_t]) 
+        Q[s_t][a_t] = Q[s_t][a_t] + α * \
+            (r + gamma * np.max(Q[s_next_t]) - Q[s_t][a_t])
 
         s = s_next
         s_t = s_next_t
-        
+
         if done:
             s = env.reset()
-        
+
     return Q, greedy_pi_multidim(Q, state_sizes, act_sizes)
 
-    
+
 def dim_of_space(space):
     dim = 0
-    if isinstance(space, spaces.Tuple):            
+    if isinstance(space, spaces.Tuple):
         for s in space.spaces:
             dim += dim_of_space(s)
     else:
@@ -103,12 +104,12 @@ def dim_of_space(space):
             dim += np.prod(space.shape)
         else:
             dim += 1
-    
+
     return dim
 
 
 def discrete_space_size(space):
-    dims = [] 
+    dims = []
     if isinstance(space, spaces.Tuple):
         for s in space.spaces:
             dims += discrete_space_size(s)
@@ -116,5 +117,5 @@ def discrete_space_size(space):
         dims += space.nvec.tolist()
     else:
         dims += [space.n]
-    
+
     return dims

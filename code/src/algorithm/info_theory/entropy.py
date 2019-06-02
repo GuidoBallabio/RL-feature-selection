@@ -11,6 +11,7 @@ class LeveOneOutEntropyEstimator(object):
     Ivanov A. V. and Rozhkova . Properties of the statistical estimate of the
     entropy of a random vector with a probability density
     """
+
     def __init__(self, kernel,  min_log_proba, bandwith=1.0):
         self.kde = KernelDensity(kernel=kernel, bandwidth=bandwith)
         self.min_log_proba = min_log_proba
