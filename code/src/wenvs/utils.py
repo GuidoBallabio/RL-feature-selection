@@ -6,6 +6,16 @@ import numpy as np
 from gym import spaces
 
 
+def atleast_2d(*arrs):
+    l = []
+    for a in arrs:
+        a = np.array(a)
+        if len(a.shape) == 1:
+            a = a[:, np.newaxis]
+        l.append(a)
+            
+    return l
+
 def greedy_pi(Q, keepdims=False):
     policy = (Q.max(axis=1, keepdims=True) == Q).astype(np.int)
     if keepdims:

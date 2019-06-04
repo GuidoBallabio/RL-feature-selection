@@ -1,78 +1,74 @@
-import abc
 from cachetools import cachedmethod
 from cachetools.keys import hashkey
 from functools import partial
+from operator import attrgetter 
+import abc
 
 
-def caching(*args, ignore=False, **kwargs):
-    if ignore:
-        return method
-    return cachedmethod(*args, **kwargs)
+class ItEstimator(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def flags(self):
+        pass
+
+    def cmi(self, X, Y, Z):
+        raise NotImplemented
+
+    def cond_entropy(self, X, Y):
+        raise NotImplemented
+
+    def mi(self, X, Y):
+        raise NotImplemented
+
+    def entropy(self, X):
+        raise NotImplemented
 
 
-class itEstimator(metaclass=abc.ABCMeta):
-    def __init__(cached=True):
+class cachingEstimator():
+    def __init__(self, estimator, selector, cached=True):
         self.selector = selector
-
-        self.direct_cmi = False
-        self.direct_ch = False
-        self.direct_mi = False
+        self.estimator = estimator
+        self.direct_cmi, self.direct_ch, self.direct_mi = self.estimator.flags()
 
         if cached:
             self.cache = {}
 
-    @abc.abstractmethod
-    def cmi(X, Y, Z):
-        pass
-
-    @abc.abstractmethod
-    def cond_entropy(X, Y):
-        pass
-
-    @abc.abstractmethod
-    def mi(X, Y):
-        pass
-
-    @abc.abstractmethod
-    def entropy(X):
-        pass
-
-    @caching(lambda self: self.cache, ignore=self.__hasattr__('cache'), key=partial(hashkey, 'cmi'))
-    def estimateCMI(X_ids, Y_ids, Z_ids, t=0):
-        if not self.direct_cmi
-           if self.direct_mi:
+    @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'cmi'))
+    def estimateCMI(self, X_ids, Y_ids, Z_ids, t=0):
+        if not self.direct_cmi:
+            if self.direct_mi:
                 return self.estimateMI(X_ids.union(Y_ids), Z_ids, t) - self.estimateMI(X_ids, Z_ids, t)
             else:
                 return self.estimateCH(Y_ids, Z_ids, t) - self.estimateCH(Y_ids, Z_ids.union(X_ids), t)
 
-        X = self._get_arrays(X_ids, t)
-        Y = self._get_arrays(Y_ids, t)
-        Z = self._get_arrays(Z_ids, t)
+        X = self.selector._get_arrays(X_ids, t)
+        Y = self.selector._get_arrays(Y_ids, t)
+        Z = self.selector._get_arrays(Z_ids, t)
 
-        return self.cmi(X, Y, Z)
+        return self.estimator.cmi(X, Y, Z)
 
-    @caching(lambda self: self.cache, ignore=self.__hasattr__('cache'), key=partial(hashkey, 'ch'))
-    def estimateCH(X_ids, Y_ids, t=0):
+    @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'ch'))
+    def estimateCH(self, X_ids, Y_ids, t=0):
         if not self.direct_ch:
             return self.estimateH(X_ids.union(Y_ids), t) - self.estimateH(Y_ids, t)
 
-        X = self._get_arrays(X_ids, t)
-        Y = self._get_arrays(Y_ids, t)
+        X = self.selector._get_arrays(X_ids, t)
+        Y = self.selector._get_arrays(Y_ids, t)
 
-        return self.cond_entropy(X, Y)
+        return self.estimator.cond_entropy(X, Y)
 
-    @caching(lambda self: self.cache, ignore=self.__hasattr__('cache'), key=partial(hashkey, 'mi'))
-    def estimateMI(X_ids, Y_ids, t=0):
+    @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'mi'))
+    def estimateMI(self, X_ids, Y_ids, t=0):
         if not self.direct_mi:
             return self.estimateH(X_ids, t) + self.estimateH(Y_ids, t) - self.estimateH(X_ids.union(Y_ids), t)
 
-        X = self._get_arrays(X_ids, t)
-        Y = self._get_arrays(Y_ids, t)
+        X = self.selector._get_arrays(X_ids, t)
+        Y = self.selector._get_arrays(Y_ids, t)
 
-        return self.mutual_information(X, Y)
+        return self.estimator.mi(X, Y)
 
-    @caching(lambda self: self.cache, ignore=self.__hasattr__('cache'), key=partial(hashkey, 'h'))
-    def estimateH(ids, t=0):
-        X = self._get_arrays(ids, t)
+    @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'h'))
+    def estimateH(self, ids, t=0):
+        X = self.selector._get_arrays(ids, t)
 
-        return self.entropy(X)
+        return self.estimator.entropy(X)

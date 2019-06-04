@@ -1,9 +1,10 @@
 import numpy as np
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.neighbors import KDTree
+from src.algorithm.info_theory.it_estimator import ItEstimator
 
 
-class LeveOneOutEntropyEstimator(object):
+class LeveOneOutEntropyEstimator(ItEstimator):
     """
     Leave One Out cross-validation entropy estimation from datapoints by
     using kernel estimation of the probability density
@@ -32,25 +33,20 @@ class LeveOneOutEntropyEstimator(object):
 
         return entropy / datapoints.shape[0]
 
-    def estimateJoint(self, datas: list):
-        for i in range(len(datas)):
-            if len(datas[i].shape) == 1:
-                datas[i] = np.expand_dims(datas[i], 1)
+    def entropy(self, X):
+        return self.estimateFromData(X)
 
-        joint = np.hstack(datas)
-        return self.estimateFromData(joint)
+    def flags(self):
+        return False, False, False
 
 
-class NNEntropyEstimator(object):
+class NNEntropyEstimator(ItEstimator):
     EPS = 0.001
 
     def __init__(self):
         pass
 
     def estimateFromData(self, datapoints):
-        """
-        N.B. the real estimate is this one + log(2) + C_E (Euler's constant)
-        """
         entropy = 0.0
         nPoints = datapoints.shape[0]
         for i in range(nPoints):
@@ -59,12 +55,10 @@ class NNEntropyEstimator(object):
             dist = dist[0]
             entropy += np.log(nPoints * dist + self.EPS)
 
-        return entropy / nPoints
+        return entropy / nPoints + np.log(2) + np.euler_gamma
 
-    def estimateJoint(self, datas: list):
-        for i in range(len(datas)):
-            if len(datas[i].shape) == 1:
-                datas[i] = np.expand_dims(datas[i], 1)
+    def entropy(self, X):
+        return self.estimateFromData(X)
 
-        joint = np.hstack(datas)
-        return self.estimateFromData(joint)
+    def flags(self):
+        return False, False, False

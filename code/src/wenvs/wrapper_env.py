@@ -1,7 +1,7 @@
 import numpy as np
 from gym import spaces, Wrapper
 
-from src.wenvs.utils import dim_of_space, discrete_space_size
+from src.wenvs.utils import dim_of_space, discrete_space_size, atleast_2d
 
 
 class WrapperEnv(Wrapper):
@@ -57,11 +57,7 @@ class WrapperEnv(Wrapper):
 
         """
 
-        self.env = env
-        self.metadata = env.metadata
-        self.reward_range = env.reward_range
-        self.spec = env.spec
-        self.unwrapped = self
+        super().__init__(env)
 
         self.n_fake_features = n_fake_features
         self.fun_list = fun_list if fun_list is not None else []
@@ -101,9 +97,9 @@ class WrapperEnv(Wrapper):
         if self.n_fake_actions > 0:
             if self.continuous_actions:
                 low = np.concatenate([self.orig_act_space.low,
-                    *[-inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
+                                      *[-inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
                 high = np.concatenate([self.orig_act_space.high,
-                    *[inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
+                                       *[inf for _ in range(self.n_fake_actions)]], axis=None).ravel()
                 self.action_space = spaces.Box(
                     low=low, high=high, dtype=np.float32)
             else:
@@ -112,36 +108,32 @@ class WrapperEnv(Wrapper):
                 else:
                     init = [self.orig_act_space.n]
                     self.action_space = spaces.MultiDiscrete(init +
-                        [self.size_discrete_space for _ in range(self.n_fake_actions)])
-        else:
-            self.action_space = self.orig_act_space
+                                                             [self.size_discrete_space for _ in range(self.n_fake_actions)])
 
         if self.total_fake_features > 0:
             if self.continuous_state:
-                low = np.concatenate(self.orig_obs_space.low,
-                    *[-inf for _ in range(self.total_fake_features)]], axis=None).ravel()
-                high= np.concatenate([self.orig_obs_space.high,
-                    *[inf for _ in range(self.total_fake_features)]], axis=None).ravel()
+                low = np.concatenate([self.orig_obs_space.low,
+                                      *[-inf for _ in range(self.total_fake_features)]], axis=None).ravel()
+                high = np.concatenate([self.orig_obs_space.high,
+                                       *[inf for _ in range(self.total_fake_features)]], axis=None).ravel()
                 self.observation_space = spaces.Box(
-                    low = low, high = high, dtype = np.float32)
+                    low=low, high=high, dtype=np.float32)
             else:
                 if isinstance(self.orig_obs_space, spaces.MultiDiscrete):
-                    init=self.orig_obs_space.nvec.tolist()
+                    init = self.orig_obs_space.nvec.tolist()
                 else:
-                    init=[self.orig_obs_space.n]
-                self.observation_space=spaces.MultiDiscrete(init +
-                    [self.size_discrete_space for _ in range(self.n_fake_features)] + self.fun_discrete_sizes)
-        else:
-            self.observation_space=self.orig_obs_space
+                    init = [self.orig_obs_space.n]
+                self.observation_space = spaces.MultiDiscrete(init +
+                                                              [self.size_discrete_space for _ in range(self.n_fake_features)] + self.fun_discrete_sizes)
 
         if not self.continuous_state:
-            self.discrete_obs_space=discrete_space_size(
+            self.discrete_obs_space = discrete_space_size(
                 self.observation_space)
         if not self.continuous_actions:
-            self.discrete_acts_space=discrete_space_size(self.action_space)
+            self.discrete_acts_space = discrete_space_size(self.action_space)
 
     def _wrap_obs(self, obs):
-        obs_add=[]
+        obs_add = []
 
         if self.n_fake_features > 0:
             if self.continuous_state:
@@ -151,53 +143,53 @@ class WrapperEnv(Wrapper):
                     self.size_discrete_space, size=self.n_fake_features))
 
         if self.fun_list:
-            obs_fun=[f(obs) for f in self.fun_list]
+            obs_fun = [f(obs) for f in self.fun_list]
             obs_add.append(obs_fun)
 
         if len(obs_add) == 0:
             return obs
         else:
-            return np.concatenate([obs, *obs_add], axis = None).ravel()
+            return np.concatenate([obs, *obs_add], axis=None).ravel()
 
     def _unwrap_obs(self, obs):
         assert self.observation_space.contains(obs), "Invalid Observation"
         if self.total_fake_features > 0:
-            obs=obs[:-self.total_fake_features]
+            obs = obs[:-self.total_fake_features]
             if len(obs) == 1:
-                obs=obs[0]
+                obs = obs[0]
                 if not self.continuous_state:
-                    obs=int(obs)
+                    obs = int(obs)
 
         return obs
 
     def _unwrap_act(self, action):
         assert self.action_space.contains(action), "Invalid Action"
         if self.n_fake_actions > 0:
-            action=action[:-self.n_fake_actions]
+            action = action[:-self.n_fake_actions]
             if len(action) == 1:
-                action=action[0]
+                action = action[0]
                 if not self.continuous_actions:
-                    action=int(action)
+                    action = int(action)
 
         return action
 
     def decode_act(self, act_en):
-        act=np.array(np.unravel_index(act_en, self.discrete_acts_space)).T
+        act = np.array(np.unravel_index(act_en, self.discrete_acts_space)).T
         if act.size == 1:
-            act=act.flat[0]
+            act = act.flat[0]
         return act
 
     def encode_obs(self, obs):
         if self.state_dim == 1:
-            obs=[obs]
+            obs = [obs]
         return np.ravel_multi_index(obs, self.discrete_obs_space)
 
     def encode_act(self, act):
         if self.action_dim == 1:
-            act=[act]
+            act = [act]
         return np.ravel_multi_index(act, self.discrete_acts_space)
 
-    def run_episode(self, policy = None, render = False, iterMax = 200):
+    def run_episode(self, policy=None, render=False, iterMax=200):
         """Run episode given a policy and eventually renders it.
 
         The episode is constructed using a as default a random policy and run till it's done
@@ -225,46 +217,28 @@ class WrapperEnv(Wrapper):
         if policy is None:
             def policy(obs): return self.action_space.sample()
 
-        ss, acts, rs=[], [], []
-        obs=self.reset()
+        ss, acts, rs = [], [], []
+        obs = self.reset()
         for _ in range(iterMax):
             ss.append(obs)
             render_it()
-            a=policy(obs)
+            a = policy(obs)
             acts.append(a)
-            obs, r, done, info=self.step(a)
+            obs, r, done, info = self.step(a)
             rs.append(r)
             if done:
-                ss.append(obs)
+                # ss.append(obs)
                 render_it()
                 break
-
-        return np.array(ss), np.array(acts), np.array(rs)
+        
+        return atleast_2d(ss, acts, rs)
 
     def step(self, action):
 
-        action=self._unwrap_act(action)
-        obs, r, done, info=self.env.step(action)
+        action = self._unwrap_act(action)
+        obs, r, done, info = self.env.step(action)
 
         return self._wrap_obs(obs), r, done, info
 
-    def seed(self, seed = None):
-        return self.env.seed(seed)
-
-    def render(self, mode = 'human', **kwargs):
-        self.env.render(mode = mode, **kwargs)
-
-    def reset(self):
-        return self._wrap_obs(self.env.reset())
-
-    def close(self):
-        return self.env.close()
-
-    def configure(self, *args, **kwargs):
-        pass
-
-    def __del__(self):
-        self.close()
-
-    def __str__(self):
-        return '<{} instance>'.format(type(self).__name__)
+    def reset(self, **kwargs):
+        return self._wrap_obs(self.env.reset(**kwargs))
