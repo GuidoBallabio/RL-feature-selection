@@ -1,5 +1,4 @@
 """classic Linear Quadratic Gaussian Regulator task"""
-# import gym
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
@@ -36,17 +35,19 @@ class LQG_nD(gym.Env):
         'video.frames_per_second': 30
     }
 
-    def __init__(self, gamma, n_dim=1, discrete_reward=False):        
+    def __init__(self, gamma, n_dim=1, action_dim=None, discrete_reward=False):        
         self.gamma = gamma
         self.n_dim = n_dim
         self.discrete_reward = discrete_reward
-
-        self.A = np.ones((n_dim, n_dim))
-        self.B = np.ones((n_dim, n_dim))
-        self.Q = np.full((n_dim, n_dim), 0.9)
-        self.R = np.full((n_dim, n_dim), 0.9)
-
         
+        if action_dim is None:
+            self.action_dim = n_dim
+
+        self.A = np.eye(n_dim, n_dim) #eventually to be changed
+        self.B = np.eye(n_dim, self.action_dim)
+        self.Q = np.eye(n_dim, n_dim) * 0.9
+        self.R = np.eye(self.action_dim, self.action_dim) * 0.9
+
         self.max_pos = 10.0
         self.max_action = 8.0
         self.sigma_noise = 0.1
@@ -55,7 +56,7 @@ class LQG_nD(gym.Env):
         self.viewer = None
         self.action_space = spaces.Box(low=-self.max_action,
                                        high=self.max_action,
-                                       shape=(n_dim,))
+                                       shape=(self.action_dim,))
         self.observation_space = spaces.Box(low=-self.max_pos,
                                             high=self.max_pos,
                                             shape=(n_dim,))
@@ -64,27 +65,27 @@ class LQG_nD(gym.Env):
         self.seed()
         self.reset()
         
-        self.viewer = None
+        self.state = None
 
     def get_cost(self, x, u):
         x = np.atleast_1d(x)
         u = np.atleast_1d(u)
-        return np.asscalar(x @ self.Q @ x + u @ self.R @ u)
+        return -0.5*np.asscalar(x.T @ self.Q @ x + u.T @ self.R @ u)
 
     def step(self, action, render=False):
-        action = np.atleast_1d(action)
-        u = np.clip(action, -self.max_action, self.max_action)
+        u = np.atleast_1d(action) # u is a real
+
         cost = self.get_cost(self.state, u)
         
-        noise = self.np_random.randn() * self.sigma_noise
+        noise = self.np_random.normal(size=self.n_dim, scale=self.sigma_noise)
         xn = self.A @ self.state + self.B @ u + noise
-        self.state = xn.flatten()
+        self.state = np.clip(xn, -self.max_pos, self.max_pos)
 
         if self.discrete_reward:
             if np.all(np.abs(self.state) <= 2) and np.all(np.abs(u) <= 2):
                 return self.get_state(), 0, False, {}
             return self.get_state(), -1, False, {}
-        return self.get_state(), -cost, False, {}
+        return self.get_state(), cost, False, {}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -107,8 +108,11 @@ class LQG_nD(gym.Env):
             self.viewer.close()
             self.viewer = None
 
-    def render(self, mode='human', close=True):
-        assert self.n_dim <= 1, "Visualization is possible only in 1D (or 2D later on)" 
+    def __del__(self):
+        self.close()
+
+    def render(self, mode='human', close=False):
+        assert self.n_dim <= 2, "Visualization is possible only in 1D (or 2D later on)" 
 
         if close:
             self.close()
@@ -116,36 +120,42 @@ class LQG_nD(gym.Env):
         screen_width = 600
         screen_height = 400
         
-        world_width = (self.max_pos * 2) * 2
-        scale = screen_width / world_width
-        bally = 100
+        scale = np.array([screen_width, screen_height]) / (self.max_pos * 2)
 
         if self.viewer is None:
-            ballradius = 3
-            clearance = 0  # y-offset
             from gym.envs.classic_control import rendering
+            ballradius = 3
             self.viewer = rendering.Viewer(screen_width, screen_height)
             mass = rendering.make_circle(ballradius * 2)
             mass.set_color(.8, .3, .3)
-            mass.add_attr(rendering.Transform(translation=(0, clearance)))
+            mass.add_attr(rendering.Transform(translation=(0, 0)))
             self.masstrans = rendering.Transform()
             mass.add_attr(self.masstrans)
             self.viewer.add_geom(mass)
-            self.track = rendering.Line((0, bally), (screen_width, bally))
-            self.track.set_color(0.5, 0.5, 0.5)
-            self.viewer.add_geom(self.track)
-            zero_line = rendering.Line((screen_width / 2, 0),
-                                       (screen_width / 2, screen_height))
-            zero_line.set_color(0.5, 0.5, 0.5)
-            self.viewer.add_geom(zero_line)
 
-        x = self.state[0]
-        ballx = x * scale + screen_width / 2.0
+            zero_line_x = rendering.Line((0, screen_height / 2),
+                                       (screen_width, screen_height / 2))
+            zero_line_x.set_color(0.5, 0.5, 0.5)
+            self.viewer.add_geom(zero_line_x)
+
+            zero_line_y = rendering.Line((screen_width / 2, 0),
+                                       (screen_width / 2, screen_height))
+            zero_line_y.set_color(0.5, 0.5, 0.5)
+            self.viewer.add_geom(zero_line_y)
+
+        if self.state is None: return None
+
+        ballx = self.state[0] * scale[0] + screen_width / 2.0
+        if self.n_dim == 2:
+            bally = self.state[1] * scale[1] + screen_height / 2.0
+        else:
+            bally = screen_height / 2
+
         self.masstrans.set_translation(ballx, bally)
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-    def _computeP2(self, K):
+    def computeP(self, K):
         """
         This function computes the Riccati equation associated to the LQG
         problem.
@@ -156,21 +166,24 @@ class LQG_nD(gym.Env):
             P (matrix): the Riccati Matrix
 
         """
-        I = np.eye(self.Q.shape[0], self.Q.shape[1])
+        K = np.atleast_2d(K) # K.shape is (1, n_dim) at least (action_dim, n_dim) otherwise
+        I = np.eye(self.n_dim)
 
-        if np.array_equal(self.A, I) and np.array_equal(self.B, I):
-            P = (self.Q + K.T @ self.R @ K) / (I - self.gamma * (I + 2*K + K**2))
+        if np.array_equal(self.A, I) and np.array_equal(self.B, I): 
+            P = np.linalg.inv(I - self.gamma * (I + 2*K + K**2)) @ (self.Q + K.T @ self.R @ K) 
         else:
             tolerance = 0.0001
-            P = I.copy()
-            Pnew_base = self.Q + K.T @ self.R @ K
+            P_old = I
+            P_base = self.Q + K.T @ self.R @ K
             BK_A = self.B @ K + self.A
-            Pnew = Pnew_base + self.gamma * BK_A.T @ P @ BK_A
-            while not np.allclose(P, Pnew, atol=tolerance, rtol=0):
-                Pnew = Pnew_base + self.gamma * BK_A.T @ P @ BK_A
-            return P
-
-            '''
+            P = P_base + self.gamma * BK_A.T @ P_old @ BK_A
+            while not np.allclose(P_old, P, atol=tolerance, rtol=0):
+                P_old = P
+                P = P_base + self.gamma * BK_A.T @ P_old @ BK_A
+        
+        return P
+        
+        '''
                 Pnew = Pnew_base + self.gamma *  (A.T @ P @ A +
                                                   B_K.T @ P @ A +
                                                   A.T @ P @ B_K +
@@ -189,22 +202,23 @@ class LQG_nD(gym.Env):
                        np.dot(K.T, np.dot(self.R, K))
                 converged = np.max(np.abs(P - Pnew)) < tolerance
                 P = Pnew
-            '''
+        '''
 
     def computeOptimalK(self):
         """
         This function computes the optimal linear controller associated to the
-        LQG problem (u = K * x).
+        LQG problem (u = K @ x).
 
         Returns:
-            K (matrix): the optimal controller bv
+            K (matrix): the optimal controller matrix
 
         """
-        P = np.eye(self.Q.shape[0], self.Q.shape[1])
+        P = np.eye(self.n_dim)
+
         for i in range(100):
-            K = -self.gamma * np.linalg.inv(self.R + self.gamma * (self.B.T @ P @ self.B)) @ self.B.T @ P @ self.A
-            P = self._computeP2(K)
-        K = -self.gamma * np.linalg.inv(self.R + self.gamma * (self.B.T @ P @ self.B)) @ self.B.T @ P @ self.A
+            K = -self.gamma * np.linalg.inv(self.R + self.gamma * self.B.T @ P @ self.B) @ self.B.T @ P @ self.A
+            P = self.computeP(K)
+        K = -self.gamma * np.linalg.inv(self.R + self.gamma * self.B.T @ P @ self.B) @ self.B.T @ P @ self.A
         return K
 
     def computeJ(self, K, Sigma, n_random_x0=100):
@@ -214,7 +228,7 @@ class LQG_nD(gym.Env):
         Args:
             K (matrix): the controller matrix
             Sigma (matrix): covariance matrix of the zero-mean noise added to
-                            the controller action
+                            the controller action (shape == action_dim)
             n_random_x0: the number of samples to draw in order to average over
                          the initial state
 
@@ -222,15 +236,16 @@ class LQG_nD(gym.Env):
             J (float): The discounted reward
 
         """
-        K = np.atleast_1d(K)
-        Sigma = np.atleast_1d(Sigma)
+        K = np.atleast_2d(K)
+        Sigma = np.atleast_2d(Sigma)
 
-        P = self._computeP2(K)
+        P = self.computeP(K)
         J = 0.0
         for i in range(n_random_x0):
-            self._reset()
-            x0 = self._getState()
-            J -= x0.T @ P @ x0 + (1 / (1 - self.gamma)) * np.trace(Sigma @ (self.R + self.gamma * (self.B.T @ P @ self.B)))
+            self.reset()
+            x0 = self.get_state()
+            J -= 0.5 * x0.T @ P @ x0 + 0.5 * (1 / (1 - self.gamma)) * \
+                np.trace(Sigma @ (self.R + self.gamma * self.B.T @ P @ self.B))
         J /= n_random_x0
         return J
 
@@ -254,32 +269,30 @@ class LQG_nD(gym.Env):
         """
         x = np.atleast_1d(x)
         u = np.atleast_1d(u)
-        K = np.atleast_1d(K)
-        Sigma = np.atleast_1d(Sigma)
+        K = np.atleast_2d(K)
+        Sigma = np.atleast_2d(Sigma)
 
-        P = self._computeP2(K)
+        P = self.computeP(K)
         Qfun = 0
         for i in range(n_random_xn):
-            noise = np.random.randn() * self.sigma_noise
-            action_noise = np.random.multivariate_normal(np.zeros(Sigma.shape[0]), Sigma, 1)
+            noise = np.random.normal(size=self.n_dim, scale=self.sigma_noise)
+            action_noise = np.random.multivariate_normal(np.zeros(self.action_dim), Sigma, 1).reshape(-1)
             nextstate = self.A @ x + self.B @ (u + action_noise) + noise
             Qfun -= x.T @ self.Q @ x + u.T @ self.R @ u + \
                 self.gamma * nextstate.T @ P @ nextstate + \
                 (self.gamma / (1 - self.gamma)) * \
-                np.trace(Sigma @ (self.R + self.gamma * (self.B.T @ P @ self.B)))
+                np.trace(Sigma @ (self.R + self.gamma * self.B.T @ P @ self.B))
+            Qfun /= 2
 
         Qfun = np.asscalar(Qfun) / n_random_xn
         return Qfun
     
-
-    #TODO
     def computeVFunction(self, x, K, Sigma, n_random_xn=100):
         """
-        This function computes the Q-value of a pair (x,u) given the linear
+        This function computes the Value of a state x given the linear
         controller Kx + epsilon where epsilon \sim N(0, Sigma).
         Args:
             x (int, array): the state
-            u (int, array): the action
             K (matrix): the controller matrix
             Sigma (matrix): covariance matrix of the zero-mean noise added to
             the controller action
@@ -287,31 +300,26 @@ class LQG_nD(gym.Env):
             the next state
 
         Returns:
-            Qfun (float): The Q-value in the given pair (x,u) under the given
+            Vfun (float): The Value in the given state x under the given
             controller
 
         """
-        if isinstance(x, (int, long, float, complex)):
-            x = np.array([x])
-        if isinstance(K, (int, long, float, complex)):
-            K = np.array([K]).reshape(1, 1)
-        if isinstance(Sigma, (int, long, float, complex)):
-            Sigma = np.array([Sigma]).reshape(1, 1)
+        x = np.atleast_1d(x)
+        K = np.atleast_2d(K)
+        Sigma = np.atleast_2d(Sigma)
 
-        P = self._computeP2(K)
+        P = self.computeP(K)
         Vfun = 0
         for i in range(n_random_xn):
-            u = np.random.randn() * Sigma + K * x
-            noise = np.random.randn() * self.sigma_noise
-            action_noise = np.random.multivariate_normal(np.zeros(Sigma.shape[0]), Sigma, 1)
-            nextstate = self.A @ x + self.B @ (u + action_noise) + noise
-            Vfun -= x.T @ self.Q @ x + u.T @ self.R @ u + \
-                    self.gamma * nextstate.T @ P @ nextstate + \
-                    (self.gamma / (1 - self.gamma)) * \
-                    np.trace(Sigma @ (self.R + self.gamma * (self.B.T @ P @ self.B)))
+            Vfun -= x.T @ P @ x + \
+                (1 / (1 - self.gamma)) * \
+                np.trace(Sigma @ (self.R + self.gamma * self.B.T @ P @ self.B))
+            Vfun /= 2
 
-        Qfun = np.asscalar(Vfun) / n_random_xn
-        return Qfun
+        Vfun = np.asscalar(Vfun) / n_random_xn
+        return Vfun
+
+
 
         # TODO check following code
 

@@ -163,7 +163,7 @@ class WrapperEnv(Wrapper):
         return obs
 
     def _unwrap_act(self, action):
-        assert self.action_space.contains(action), "Invalid Action"
+        assert self.action_space.contains(action), f"Action {action} is invalid"
         if self.n_fake_actions > 0:
             action = action[:-self.n_fake_actions]
             if len(action) == 1:

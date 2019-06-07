@@ -10,7 +10,7 @@ from gym import spaces, logger
 from gym.utils import seeding
 import numpy as np
 
-class CartPoleEnv(gym.Env):
+class CartPoleInfinite(gym.Env):
     """
     Description:
         A pole is attached by an un-actuated joint to a cart, which moves along a frictionless track. The pendulum starts upright, and the goal is to prevent it from falling over by increasing and reducing the cart's velocity.
@@ -53,7 +53,7 @@ class CartPoleEnv(gym.Env):
         'video.frames_per_second' : 50
     }
 
-    def __init__(self):
+    def __init__(self, stop_after=10):
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
@@ -65,8 +65,9 @@ class CartPoleEnv(gym.Env):
         self.kinematics_integrator = 'euler'
 
         # Angle at which to fail the episode REMOVED LIMITS
-        #self.theta_threshold_radians = 12 * 2 * math.pi / 360
-        #self.x_threshold = 2.4
+        self.theta_threshold_radians = 12 * 2 * math.pi / 360
+        self.x_threshold = 2.4
+        self.stop_after = stop_after
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation is still within bounds
         high = np.array([np.finfo(np.float32).max for _ in range(4)])
@@ -78,7 +79,7 @@ class CartPoleEnv(gym.Env):
         self.viewer = None
         self.state = None
 
-        self.steps_beyond_done = None
+        self.steps_beyond_done = 0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -104,24 +105,23 @@ class CartPoleEnv(gym.Env):
             x  = x + self.tau * x_dot
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
-        self.state = (x,x_dot,theta,theta_dot)
-        done = self.steps_beyond_done >= 10
+        self.state = np.array([x,x_dot,theta,theta_dot])
+        done = x < -self.x_threshold \
+                or x > self.x_threshold \
+                or theta < -self.theta_threshold_radians \
+                or theta > self.theta_threshold_radians
 
         if not done:
-            reward = 1.0
-        elif self.steps_beyond_done is None:
-            # Pole just fell!
-            self.steps_beyond_done = 0
             reward = 1.0
         else:              
             self.steps_beyond_done += 1
             reward = 0.0
 
-        return np.array(self.state), reward, done, {}
+        return self.state, reward, self.steps_beyond_done >= self.stop_after, {}
 
     def reset(self):
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
-        self.steps_beyond_done = None
+        self.steps_beyond_done = 0
         return self.state
 
     def render(self, mode='human'):
@@ -181,3 +181,6 @@ class CartPoleEnv(gym.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+
+    def __del__(self):
+        self.close()
