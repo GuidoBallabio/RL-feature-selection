@@ -20,14 +20,15 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.Rmax = np.abs(
             np.max([np.max(t[:, self.id_reward]) for t in self.trajectories]))
         self.residual_error = 0
-        
+
         self.max_k = min(len(t) for t in self.trajectories)
 
     def _prep_data(self, k):
-        # in alternative store only one copy and make a new copy on each call shifted by t (nosense?)
+        # in alternative store only one copy and make a new copy 
+        # on each call shifted by t (nosense?)
         if hasattr(self, 'k_step_data') and k == self.k_step_data.shape[2]:
             return
-        
+
         shift = np.zeros(self.n_features + 1, dtype=np.int)
         shift[self.id_reward] = -1
 

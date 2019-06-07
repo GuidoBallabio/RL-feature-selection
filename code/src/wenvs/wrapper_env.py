@@ -163,7 +163,8 @@ class WrapperEnv(Wrapper):
         return obs
 
     def _unwrap_act(self, action):
-        assert self.action_space.contains(action), f"Action {action} is invalid"
+        assert self.action_space.contains(
+            action), f"Action {action} is invalid"
         if self.n_fake_actions > 0:
             action = action[:-self.n_fake_actions]
             if len(action) == 1:
@@ -230,7 +231,7 @@ class WrapperEnv(Wrapper):
                 # ss.append(obs)
                 render_it()
                 break
-        
+
         return atleast_2d(ss, acts, rs)
 
     def step(self, action):

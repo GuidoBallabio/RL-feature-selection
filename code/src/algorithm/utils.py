@@ -2,6 +2,7 @@ import numpy as np
 
 import functools
 
+
 def debug(func):
     """Print the function signature and return value"""
     @functools.wraps(func)
@@ -14,6 +15,7 @@ def debug(func):
         print(f"{func.__name__!r} returned {value!r}")           # 4
         return value
     return wrapper_debug
+
 
 def independent_roll(arr, shifts, axis=0):
     """Apply an independent roll for each dimensions of a single axis.

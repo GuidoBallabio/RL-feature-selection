@@ -22,6 +22,7 @@ import gym
 from gym import spaces
 from gym.utils import seeding
 
+
 class Continuous_MountainCarEnv(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -34,7 +35,7 @@ class Continuous_MountainCarEnv(gym.Env):
         self.min_position = -1.2
         self.max_position = 0.6
         self.max_speed = 0.07
-        self.goal_position = 0.45 # was 0.5 in gym, 0.45 in Arnaud de Broissia's version
+        self.goal_position = 0.45  # was 0.5 in gym, 0.45 in Arnaud de Broissia's version
         self.power = 0.0015
 
         self.low_state = np.array([self.min_position, -self.max_speed])
@@ -60,20 +61,25 @@ class Continuous_MountainCarEnv(gym.Env):
         velocity = self.state[1]
         force = min(max(action[0], -1.0), 1.0)
 
-        velocity += force*self.power -0.0025 * math.cos(3*position)
-        if (velocity > self.max_speed): velocity = self.max_speed
-        if (velocity < -self.max_speed): velocity = -self.max_speed
+        velocity += force*self.power - 0.0025 * math.cos(3*position)
+        if (velocity > self.max_speed):
+            velocity = self.max_speed
+        if (velocity < -self.max_speed):
+            velocity = -self.max_speed
         position += velocity
-        if (position > self.max_position): position = self.max_position
-        if (position < self.min_position): position = self.min_position
-        if (position==self.min_position and velocity<0): velocity = 0
+        if (position > self.max_position):
+            position = self.max_position
+        if (position < self.min_position):
+            position = self.min_position
+        if (position == self.min_position and velocity < 0):
+            velocity = 0
 
         done = bool(position >= self.goal_position)
 
         reward = 0
         if done:
             reward = 100.0
-        reward-= math.pow(action[0],2)*0.1
+        reward -= math.pow(action[0], 2)*0.1
 
         self.state = np.array([position, velocity])
         return self.state, reward, done, {}
@@ -94,9 +100,8 @@ class Continuous_MountainCarEnv(gym.Env):
 
         world_width = self.max_position - self.min_position
         scale = screen_width/world_width
-        carwidth=40
-        carheight=20
-
+        carwidth = 40
+        carheight = 20
 
         if self.viewer is None:
             from gym.envs.classic_control import rendering
@@ -111,19 +116,21 @@ class Continuous_MountainCarEnv(gym.Env):
 
             clearance = 10
 
-            l,r,t,b = -carwidth/2, carwidth/2, carheight, 0
-            car = rendering.FilledPolygon([(l,b), (l,t), (r,t), (r,b)])
+            l, r, t, b = -carwidth/2, carwidth/2, carheight, 0
+            car = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
             car.add_attr(rendering.Transform(translation=(0, clearance)))
             self.cartrans = rendering.Transform()
             car.add_attr(self.cartrans)
             self.viewer.add_geom(car)
             frontwheel = rendering.make_circle(carheight/2.5)
             frontwheel.set_color(.5, .5, .5)
-            frontwheel.add_attr(rendering.Transform(translation=(carwidth/4,clearance)))
+            frontwheel.add_attr(rendering.Transform(
+                translation=(carwidth/4, clearance)))
             frontwheel.add_attr(self.cartrans)
             self.viewer.add_geom(frontwheel)
             backwheel = rendering.make_circle(carheight/2.5)
-            backwheel.add_attr(rendering.Transform(translation=(-carwidth/4,clearance)))
+            backwheel.add_attr(rendering.Transform(
+                translation=(-carwidth/4, clearance)))
             backwheel.add_attr(self.cartrans)
             backwheel.set_color(.5, .5, .5)
             self.viewer.add_geom(backwheel)
@@ -132,15 +139,17 @@ class Continuous_MountainCarEnv(gym.Env):
             flagy2 = flagy1 + 50
             flagpole = rendering.Line((flagx, flagy1), (flagx, flagy2))
             self.viewer.add_geom(flagpole)
-            flag = rendering.FilledPolygon([(flagx, flagy2), (flagx, flagy2-10), (flagx+25, flagy2-5)])
-            flag.set_color(.8,.8,0)
+            flag = rendering.FilledPolygon(
+                [(flagx, flagy2), (flagx, flagy2-10), (flagx+25, flagy2-5)])
+            flag.set_color(.8, .8, 0)
             self.viewer.add_geom(flag)
 
         pos = self.state[0]
-        self.cartrans.set_translation((pos-self.min_position)*scale, self._height(pos)*scale)
+        self.cartrans.set_translation(
+            (pos-self.min_position)*scale, self._height(pos)*scale)
         self.cartrans.set_rotation(math.cos(3 * pos))
 
-        return self.viewer.render(return_rgb_array = mode=='rgb_array')
+        return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
     def close(self):
         if self.viewer:

@@ -1,7 +1,7 @@
 from cachetools import cachedmethod
 from cachetools.keys import hashkey
 from functools import partial
-from operator import attrgetter 
+from operator import attrgetter
 import abc
 
 

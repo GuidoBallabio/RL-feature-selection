@@ -2,6 +2,7 @@ import numpy as np
 from src.algorithm.feature_selection import FeatureSelector
 from tqdm.autonotebook import tqdm
 
+
 class BackwardFeatureSelector(FeatureSelector):
     def __init__(self, itEstimator, trajectories, nproc=1):
         super().__init__(itEstimator, trajectories, nproc)
@@ -15,9 +16,10 @@ class BackwardFeatureSelector(FeatureSelector):
         self.weights = self._get_weights(k, gamma)
         self._prep_data(k)
 
-        with tqdm(total=100, disable= not show_progress) as pbar: #tqdm problem with floats
+        with tqdm(total=100, disable=not show_progress) as pbar:  # tqdm problem with floats
             while error <= max_error and len(self.idSelected) > 1:
-                scores = self.scoreFeatures(k, gamma, show_progress=show_progress)
+                scores = self.scoreFeatures(
+                    k, gamma, show_progress=show_progress)
                 self.residual_error += scores[1][0]
                 error = self.computeError()
 
@@ -39,7 +41,7 @@ class BackwardFeatureSelector(FeatureSelector):
         list_ids = np.fromiter(self.idSelected, dtype=np.int)
         score_mat = np.zeros((k+1, len(list_ids)))
 
-        for i, id in enumerate(tqdm(list_ids, leave=False, disable= not show_progress)):
+        for i, id in enumerate(tqdm(list_ids, leave=False, disable=not show_progress)):
             S_no_i = frozenset(self.idSelected.difference({id}))
             no_S_i = no_S.union({id})
             for t in range(k):
