@@ -42,3 +42,13 @@ def independent_roll(arr, shifts, axis=0):
     result = arr[tuple(all_idcs)]
     arr = np.swapaxes(result, -1, axis)
     return arr
+
+def episodes_with_len(wenv, num_ep, len_ep, policy=None):
+    """Return a list of 'num_ep' episodes of length `len_ep`.
+    """
+    l = []
+    while len(l) < num_ep:
+        ep = wenv.run_episode(policy=policy, iterMax=len_ep)
+        if len(ep[2]):
+            l.append(np.hstack(ep))
+    return l

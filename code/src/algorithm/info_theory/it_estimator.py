@@ -24,7 +24,7 @@ class ItEstimator(metaclass=abc.ABCMeta):
         raise NotImplemented
 
 
-class cachingEstimator():
+class CachingEstimator():
     def __init__(self, estimator, selector, cached=True):
         self.selector = selector
         self.estimator = estimator
@@ -69,6 +69,9 @@ class cachingEstimator():
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'h'))
     def estimateH(self, ids, t=0):
+        print(ids)
+        if not ids:
+            return 0
         X = self.selector._get_arrays(ids, t)
 
         return self.estimator.entropy(X)

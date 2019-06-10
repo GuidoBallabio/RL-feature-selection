@@ -1,14 +1,16 @@
 import abc
 import numpy as np
 from src.algorithm.utils import independent_roll
-from src.algorithm.info_theory.it_estimator import cachingEstimator
+from src.algorithm.info_theory.it_estimator import CachingEstimator
+from enum import Enum
 
+Bound = Enum("Bound", ['cmi', 'cmi_sqrt', 'entropy'])
 
 class FeatureSelector(metaclass=abc.ABCMeta):
     def __init__(self, itEstimator, trajectories, nproc=1):
         self.trajectories = trajectories
         self.nproc = nproc
-        self.itEstimator = cachingEstimator(itEstimator, self, nproc == 1)
+        self.itEstimator = CachingEstimator(itEstimator, self, nproc == 1)
 
         self._setup()
 
@@ -17,15 +19,12 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.id_reward = self.n_features
         self.idSet = frozenset(list(range(self.n_features)))
 
-        self.Rmax = np.abs(
-            np.max([np.max(t[:, self.id_reward]) for t in self.trajectories]))
+        self.Rmax = np.max([np.abs(t[:, self.id_reward]) for t in self.trajectories])
         self.residual_error = 0
 
         self.max_k = min(len(t) for t in self.trajectories)
 
     def _prep_data(self, k):
-        # in alternative store only one copy and make a new copy 
-        # on each call shifted by t (nosense?)
         if hasattr(self, 'k_step_data') and k == self.k_step_data.shape[2]:
             return
 
@@ -55,17 +54,52 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         else:
             return self._scoreFeatureSequential(*args, **kwargs)
 
-    def _get_weights(self, k, gamma):
+    def _get_weights(self, k, gamma, bound):
+        if bound is not Bound.cmi_sqrt:
+            gamma = gamma**2
+
         weights = np.ones(k+1)
         for t in range(1, k+1):
             weights[t:] *= gamma
-        weights[k] /= 1 - gamma
+            
+        if bound is Bound.entropy:
+            weights[k] = 1/(1 - gamma)
+        else:
+            weights[k] /= 1 - gamma
 
         return weights
 
-    def computeError(self):
-        return 2**(1/2) * self.Rmax * self.residual_error
+    def _funOfBound(self, bound):
+        if bound is Bound.cmi_sqrt:
+            fun_t = lambda no_S_i, S_no_i, t: np.sqrt(self.itEstimator.estimateCMI(
+                    frozenset({self.id_reward}), no_S_i, S_no_i, t=t))
+            fun_k = lambda no_S_i, S_no_i: np.sqrt(self.itEstimator.estimateCH(no_S_i, S_no_i))
+        elif bound is Bound.cmi:
+            fun_t = lambda no_S_i, S_no_i, t: self.itEstimator.estimateCMI(
+                    frozenset({self.id_reward}), no_S_i, S_no_i, t=t)
+            fun_k = lambda no_S_i, S_no_i: self.itEstimator.estimateCH(no_S_i, S_no_i)
+        elif bound is Bound.entropy:
+            fun_t = lambda no_S_i, S_no_i, t: -self.itEstimator.estimateCH(no_S_i,
+                    frozenset({self.id_reward}).union(S_no_i), t=t)
+            fun_k = lambda no_S_i, S_no_i: self.itEstimator.estimateCH(no_S_i, S_no_i)
+
+        return fun_t, fun_k
+
+    def computeError(self, bound, residual=None):
+        if residual is None:
+            residual = self.residual_error
+
+        if bound is Bound.cmi_sqrt:
+            return 2**(1/2) * self.Rmax * residual
+        return 2**(1/2) * self.Rmax * np.sqrt(residual)
+
+    def reset(self):
+        self.residual_error = 0
+    
+    @abc.abstractmethod
+    def selectOnError(self, k, gamma, max_error, bound=Bound.entropy, show_progress=True):
+        pass
 
     @abc.abstractmethod
-    def selectOnError(self, max_error):
+    def selectNfeatures(self, n, k, gamma, bound=Bound.cmi, show_progress=True):
         pass

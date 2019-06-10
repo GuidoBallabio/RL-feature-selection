@@ -36,7 +36,7 @@ class LQG_nD(gym.Env):
         'video.frames_per_second': 30
     }
 
-    def __init__(self, gamma, n_dim=1, action_dim=None, discrete_reward=False):
+    def __init__(self, gamma, n_dim=1, action_dim=None, discrete_reward=False, A=None, B=None, Q=None, R=None):
         self.gamma = gamma
         self.n_dim = n_dim
         self.discrete_reward = discrete_reward
@@ -44,10 +44,24 @@ class LQG_nD(gym.Env):
         if action_dim is None:
             self.action_dim = n_dim
 
-        self.A = np.eye(n_dim, n_dim)  # eventually to be changed
-        self.B = np.eye(n_dim, self.action_dim)
-        self.Q = np.eye(n_dim, n_dim) * 0.9
-        self.R = np.eye(self.action_dim, self.action_dim) * 0.9
+        self.A = A
+        self.B = B
+        self.Q = Q
+        self.R = R
+
+        if A is None:
+            self.A = np.eye(n_dim, n_dim)
+        if B is None:
+            self.B = np.eye(n_dim, self.action_dim)
+        if Q is None:
+            self.Q = np.eye(n_dim, n_dim) * 0.9
+        if R is None:
+            self.R = np.eye(self.action_dim, self.action_dim) * 0.9
+
+        assert self.A.shape == (n_dim, n_dim)
+        assert self.B.shape == (n_dim, self.action_dim)
+        assert self.Q.shape == (n_dim, n_dim)
+        assert self.R.shape == (self.action_dim, self.action_dim)
 
         self.max_pos = 10.0
         self.max_action = 8.0
@@ -312,6 +326,7 @@ class LQG_nD(gym.Env):
         Vfun = np.asscalar(Vfun) / n_random_xn
         return Vfun
 
+    
         # TODO check following code
 
         # def computeM(self, K):
