@@ -69,7 +69,6 @@ class CachingEstimator():
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'h'))
     def estimateH(self, ids, t=0):
-        print(ids)
         if not ids:
             return 0
         X = self.selector._get_arrays(ids, t)

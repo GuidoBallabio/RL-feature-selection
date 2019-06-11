@@ -26,7 +26,7 @@ class BackwardFeatureSelector(FeatureSelector):
             scores = self.scoreFeatures(
                     k, gamma, bound, show_progress=show_progress)
 
-            self.residual_error += scores[1][0]
+            self.residual_error = scores[1][0]
             error = self.computeError(bound)
             self.idSelected.remove(scores[0][0])
 
@@ -46,7 +46,7 @@ class BackwardFeatureSelector(FeatureSelector):
             scores = self.scoreFeatures(
                     k, gamma, bound, show_progress=show_progress)
 
-            self.residual_error += scores[1][0]
+            self.residual_error = scores[1][0]
             error = self.computeError(bound)
             self.idSelected.remove(scores[0][0])
             yield self.idSelected.copy(), error # if all is useless move up
@@ -68,7 +68,7 @@ class BackwardFeatureSelector(FeatureSelector):
                 scores = self.scoreFeatures(
                     k, gamma, bound, show_progress=show_progress)
                 
-                new_error = self.computeError(bound, self.residual_error + scores[1][0])
+                new_error = self.computeError(bound, scores[1][0])
 
                 perc_of_max = int(100*new_error/max_error) # tqdm 
                 pbar.update(min(perc_of_max, pbar.total) - pbar.n) # tqdm 
@@ -80,7 +80,7 @@ class BackwardFeatureSelector(FeatureSelector):
                     return self.idSelected.copy(), error
 
                 self.idSelected.remove(scores[0][0])
-                self.residual_error += scores[1][0]
+                self.residual_error = scores[1][0]
                 error = new_error
 
             pbar.update(pbar.total - pbar.n) # tqdm 
