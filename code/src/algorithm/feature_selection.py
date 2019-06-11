@@ -28,6 +28,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         self.max_k = min(len(t) for t in self.trajectories)
 
+        self.residual_error = 0
+        self.correction_term = 0
+
     def _prep_data(self, k):
         if hasattr(self, 'k_step_data') and k == self.k_step_data.shape[2]:
             return
@@ -87,23 +90,26 @@ class FeatureSelector(metaclass=abc.ABCMeta):
                 no_S_i, S_no_i)
         elif bound is Bound.entropy:
             def fun_t(no_S_i, S_no_i, t): return -self.itEstimator.estimateCH(no_S_i,
-                                                                              frozenset({self.id_reward}).union(S_no_i), t=t)
+                                        frozenset({self.id_reward}).union(S_no_i), t=t)
 
             def fun_k(no_S_i, S_no_i): return self.itEstimator.estimateCH(
                 no_S_i, S_no_i)
 
         return fun_t, fun_k
 
-    def computeError(self, bound=Bound.cmi, residual=None):
+    def computeError(self, bound=Bound.cmi, residual=None, correction=None):
         if residual is None:
             residual = self.residual_error
+        if correction is None:
+            correction = self.correction_term
 
         if bound is Bound.cmi_sqrt:
             return 2**(1/2) * self.Rmax * residual
-        return 2**(1/2) * self.Rmax * np.sqrt(residual)
+        return 2**(1/2) * self.Rmax * np.sqrt(residual + correction)
 
     def reset(self):
         self.residual_error = 0
+        self.correction_term = 0
 
     @abc.abstractmethod
     def selectOnError(self, k, gamma, max_error, bound=Bound.entropy, show_progress=True):

@@ -26,9 +26,10 @@ class BackwardFeatureSelector(FeatureSelector):
             scores = self.scoreFeatures(
                 k, gamma, bound, show_progress=show_progress)
 
-            self.residual_error = scores[1][0]
-            error = self.computeError(bound)
             self.idSelected.remove(scores[0][0])
+            self.residual_error += scores[1][0]
+            self.correction_term = scores[2][0]
+            error = self.computeError(bound)
 
         return self.idSelected.copy(), error
 
@@ -46,9 +47,10 @@ class BackwardFeatureSelector(FeatureSelector):
             scores = self.scoreFeatures(
                 k, gamma, bound, show_progress=show_progress)
 
-            self.residual_error = scores[1][0]
-            error = self.computeError(bound)
             self.idSelected.remove(scores[0][0])
+            self.residual_error += scores[1][0]
+            self.correction_term = scores[2][0]
+            error = self.computeError(bound)
             yield self.idSelected.copy(), error  # if all is useless move up
 
     def selectOnError(self, k, gamma, max_error, bound=Bound.cmi, show_progress=True):
@@ -66,19 +68,20 @@ class BackwardFeatureSelector(FeatureSelector):
                 scores = self.scoreFeatures(
                     k, gamma, bound, show_progress=show_progress)
 
-                new_error = self.computeError(bound, scores[1][0])
+                new_cmi_term = self.residual_error + scores[1][0]
+                new_corr_term = scores[2][0]
+                new_error = self.computeError(
+                    bound, new_cmi_term, new_corr_term)
 
                 perc_of_max = int(100*new_error/max_error)  # tqdm
                 pbar.update(min(perc_of_max, pbar.total) - pbar.n)  # tqdm
-
-#                 print(scores)
-#                 print(error)
 
                 if new_error >= max_error:
                     return self.idSelected.copy(), error
 
                 self.idSelected.remove(scores[0][0])
-                self.residual_error = scores[1][0]
+                self.residual_error = new_cmi_term
+                self.correction_term = new_corr_term
                 error = new_error
 
             pbar.update(pbar.total - pbar.n)  # tqdm
@@ -98,17 +101,21 @@ class BackwardFeatureSelector(FeatureSelector):
         fun_t, fun_k = self._funOfBound(bound)
 
         for i, id in enumerate(tqdm(list_ids, leave=False, disable=not show_progress)):
-            S_no_i = S.difference({id})
-            no_S_i = no_S.union({id})  # complementary
+            id = frozenset({id})
+            S_no_i = S.difference(id)
+            no_S_i = no_S.union(id)
 
             for t in range(k):
-                score_mat[t, i] = fun_t(no_S_i, S_no_i, t)
+                score_mat[t, i] = fun_t(id, S_no_i, t)
             score_mat[k, i] = fun_k(no_S_i, S_no_i)
 
         scores = np.einsum('a, ab->b', self.weights, score_mat)
         sorted_idx = np.argsort(scores)
 
-        return list_ids[sorted_idx], scores[sorted_idx]
+        cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
+        new_cond_entropy = score_mat[-1, :]
+
+        return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]
 
     def reset(self):
         super().reset()
