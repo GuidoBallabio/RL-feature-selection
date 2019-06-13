@@ -19,7 +19,8 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.id_reward = self.n_features
         self.idSet = frozenset(list(range(self.n_features)))
 
-        self.Rmax = np.max([np.abs(t[:, self.id_reward]) for t in self.trajectories])
+        self.Rmax = np.max([np.max(np.abs(t[:, self.id_reward]))
+                                                  for t in self.trajectories])
         self.residual_error = 0
 
         self.max_k = min(len(t) for t in self.trajectories)
@@ -85,7 +86,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         return fun_t, fun_k
 
-    def computeError(self, bound, residual=None):
+    def computeError(self, bound=Bound.cmi, residual=None):
         if residual is None:
             residual = self.residual_error
 

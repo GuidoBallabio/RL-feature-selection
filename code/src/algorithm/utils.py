@@ -49,6 +49,6 @@ def episodes_with_len(wenv, num_ep, len_ep, policy=None):
     l = []
     while len(l) < num_ep:
         ep = wenv.run_episode(policy=policy, iterMax=len_ep)
-        if len(ep[2]):
+        if len(ep[2]) >= len_ep:
             l.append(np.hstack(ep))
     return l
