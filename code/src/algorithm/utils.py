@@ -43,6 +43,7 @@ def independent_roll(arr, shifts, axis=0):
     arr = np.swapaxes(result, -1, axis)
     return arr
 
+
 def episodes_with_len(wenv, num_ep, len_ep, policy=None):
     """Return a list of 'num_ep' episodes of length `len_ep`.
     """

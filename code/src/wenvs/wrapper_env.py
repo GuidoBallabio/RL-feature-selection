@@ -137,7 +137,8 @@ class WrapperEnv(Wrapper):
 
         if self.n_fake_features > 0:
             if self.continuous_state:
-                obs_add.append(self.np_random.normal(size=self.n_fake_features))
+                obs_add.append(self.np_random.normal(
+                    size=self.n_fake_features))
             else:
                 obs_add.append(self.np_random.randint(
                     self.size_discrete_space, size=self.n_fake_features))

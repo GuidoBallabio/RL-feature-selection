@@ -182,7 +182,7 @@ class LQG_nD(gym.Env):
             P (matrix): the Riccati Matrix
 
         """
-        K = np.atleast_2d(K)  
+        K = np.atleast_2d(K)
         # K.shape is (1, n_dim) at least (action_dim, n_dim) otherwise
         I = np.eye(self.n_dim)
 
@@ -326,7 +326,6 @@ class LQG_nD(gym.Env):
         Vfun = np.asscalar(Vfun) / n_random_xn
         return Vfun
 
-    
         # TODO check following code
 
         # def computeM(self, K):

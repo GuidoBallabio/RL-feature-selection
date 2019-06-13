@@ -6,6 +6,7 @@ from enum import Enum
 
 Bound = Enum("Bound", ['cmi', 'cmi_sqrt', 'entropy'])
 
+
 class FeatureSelector(metaclass=abc.ABCMeta):
     def __init__(self, itEstimator, trajectories, nproc=1):
         self.trajectories = trajectories
@@ -20,7 +21,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.idSet = frozenset(list(range(self.n_features)))
 
         self.Rmax = np.max([np.max(np.abs(t[:, self.id_reward]))
-                                                  for t in self.trajectories])
+                            for t in self.trajectories])
         self.residual_error = 0
 
         self.max_k = min(len(t) for t in self.trajectories)
@@ -62,7 +63,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         weights = np.ones(k+1)
         for t in range(1, k+1):
             weights[t:] *= gamma
-            
+
         if bound is Bound.entropy:
             weights[k] = 1/(1 - gamma)
         else:
@@ -72,17 +73,23 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
     def _funOfBound(self, bound):
         if bound is Bound.cmi_sqrt:
-            fun_t = lambda no_S_i, S_no_i, t: np.sqrt(self.itEstimator.estimateCMI(
-                    frozenset({self.id_reward}), no_S_i, S_no_i, t=t))
-            fun_k = lambda no_S_i, S_no_i: np.sqrt(self.itEstimator.estimateCH(no_S_i, S_no_i))
+            def fun_t(no_S_i, S_no_i, t): return np.sqrt(self.itEstimator.estimateCMI(
+                frozenset({self.id_reward}), no_S_i, S_no_i, t=t))
+
+            def fun_k(no_S_i, S_no_i): return np.sqrt(
+                self.itEstimator.estimateCH(no_S_i, S_no_i))
         elif bound is Bound.cmi:
-            fun_t = lambda no_S_i, S_no_i, t: self.itEstimator.estimateCMI(
-                    frozenset({self.id_reward}), no_S_i, S_no_i, t=t)
-            fun_k = lambda no_S_i, S_no_i: self.itEstimator.estimateCH(no_S_i, S_no_i)
+            def fun_t(no_S_i, S_no_i, t): return self.itEstimator.estimateCMI(
+                frozenset({self.id_reward}), no_S_i, S_no_i, t=t)
+
+            def fun_k(no_S_i, S_no_i): return self.itEstimator.estimateCH(
+                no_S_i, S_no_i)
         elif bound is Bound.entropy:
-            fun_t = lambda no_S_i, S_no_i, t: -self.itEstimator.estimateCH(no_S_i,
-                    frozenset({self.id_reward}).union(S_no_i), t=t)
-            fun_k = lambda no_S_i, S_no_i: self.itEstimator.estimateCH(no_S_i, S_no_i)
+            def fun_t(no_S_i, S_no_i, t): return -self.itEstimator.estimateCH(no_S_i,
+                                                                              frozenset({self.id_reward}).union(S_no_i), t=t)
+
+            def fun_k(no_S_i, S_no_i): return self.itEstimator.estimateCH(
+                no_S_i, S_no_i)
 
         return fun_t, fun_k
 
@@ -96,7 +103,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
     def reset(self):
         self.residual_error = 0
-    
+
     @abc.abstractmethod
     def selectOnError(self, k, gamma, max_error, bound=Bound.entropy, show_progress=True):
         pass
