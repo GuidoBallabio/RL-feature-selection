@@ -91,15 +91,18 @@ class BackwardFeatureSelector(FeatureSelector):
         pass
 
     def _scoreFeatureSequential(self, k, gamma, bound, show_progress):
+        S = frozenset(self.idSelected)
         no_S = self.idSet.difference(self.idSelected)  # discarded
-        list_ids = np.fromiter(self.idSelected, dtype=np.int)
+        
+        list_ids = np.fromiter(S, dtype=np.int)
         score_mat = np.zeros((k+1, len(list_ids)))
 
         fun_t, fun_k = self._funOfBound(bound)
 
         for i, id in enumerate(tqdm(list_ids, leave=False, disable=not show_progress)):
-            S_no_i = frozenset(self.idSelected.difference({id}))
-            no_S_i = no_S.union({id})
+            S_no_i = S.difference({id})
+            no_S_i = no_S.union({id}) #complementary
+
             for t in range(k):
                 score_mat[t, i] = fun_t(no_S_i, S_no_i, t)
             score_mat[k, i] = fun_k(no_S_i, S_no_i)
