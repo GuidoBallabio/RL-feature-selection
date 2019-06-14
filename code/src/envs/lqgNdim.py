@@ -171,6 +171,10 @@ class LQG_nD(gym.Env):
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
+    def optimalPolicy():
+        K = self.computeOptimalK()
+        return lambda x: np.clip(K @ x, -env.max_action, env.max_action)
+
     def computeP(self, K):
         """
         This function computes the Riccati equation associated to the LQG
@@ -208,7 +212,7 @@ class LQG_nD(gym.Env):
         LQG problem (u = K @ x).
 
         Returns:
-            K (matrix): the optimal controller matrix
+            K (matrix): the optimal controller matrix, shape = (n_action_dim, n_dim)
 
         """
         P = np.eye(self.n_dim)
