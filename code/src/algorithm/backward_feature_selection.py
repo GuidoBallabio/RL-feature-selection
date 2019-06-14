@@ -113,7 +113,7 @@ class BackwardFeatureSelector(FeatureSelector):
         sorted_idx = np.argsort(scores)
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
-        new_cond_entropy = score_mat[-1, :]
+        new_cond_entropy = self.weights[-1] * score_mat[-1,:]
 
         return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]
 
