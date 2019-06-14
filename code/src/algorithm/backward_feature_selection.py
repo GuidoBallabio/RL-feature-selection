@@ -109,11 +109,10 @@ class BackwardFeatureSelector(FeatureSelector):
                 score_mat[t, i] = fun_t(id, S_no_i, t)
             score_mat[k, i] = fun_k(no_S_i, S_no_i)
 
-        scores = np.einsum('a, ab->b', self.weights, score_mat)
-        sorted_idx = np.argsort(scores)
-
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
-        new_cond_entropy = self.weights[-1] * score_mat[-1,:]
+        new_cond_entropy = self.weights[-1] * score_mat[-1, :]
+
+        sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
 
         return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]
 
