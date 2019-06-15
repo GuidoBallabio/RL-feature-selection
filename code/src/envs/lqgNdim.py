@@ -285,8 +285,9 @@ class LQG_nD(gym.Env):
         P = self.computeP(K)
         Qfun = 0
         for i in range(n_random_xn):
-            noise = np.random.normal(size=self.n_dim, scale=self.sigma_noise)
-            action_noise = np.random.multivariate_normal(
+            noise = self.np_random.normal(
+                size=self.n_dim, scale=self.sigma_noise)
+            action_noise = self.np_random.multivariate_normal(
                 np.zeros(self.action_dim), Sigma, 1).reshape(-1)
             nextstate = self.A @ x + self.B @ (u + action_noise) + noise
             Qfun -= x.T @ self.Q @ x + u.T @ self.R @ u + \
