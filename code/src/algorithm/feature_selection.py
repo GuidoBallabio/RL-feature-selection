@@ -24,7 +24,6 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         self.Rmax = np.max([np.max(np.abs(t[:, self.id_reward]))
                             for t in self.trajectories])
-        self.residual_error = 0
 
         self.max_k = min(len(t) for t in self.trajectories)
 
