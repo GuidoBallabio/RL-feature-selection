@@ -4,10 +4,11 @@
 # @Last modified time: 2018-12-21T10:50:19+01:00
 
 import abc
-import numpy as np
 from functools import partial
-from scipy.special import digamma
 from multiprocessing import Pool
+
+import numpy as np
+from scipy.special import digamma
 
 
 class MIEstimator(metaclass=abc.ABCMeta):

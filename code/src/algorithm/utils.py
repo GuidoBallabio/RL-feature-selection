@@ -1,6 +1,6 @@
-import numpy as np
-
 import functools
+
+import numpy as np
 
 
 def debug(func):

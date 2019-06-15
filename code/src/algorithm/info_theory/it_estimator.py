@@ -1,8 +1,9 @@
-from cachetools import cachedmethod
-from cachetools.keys import hashkey
+import abc
 from functools import partial
 from operator import attrgetter
-import abc
+
+from cachetools import cachedmethod
+from cachetools.keys import hashkey
 
 
 class ItEstimator(metaclass=abc.ABCMeta):

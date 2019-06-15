@@ -1,6 +1,7 @@
 import numpy as np
-from sklearn.neighbors.kde import KernelDensity
+
 from sklearn.neighbors import KDTree
+from sklearn.neighbors.kde import KernelDensity
 from src.algorithm.info_theory.it_estimator import ItEstimator
 
 

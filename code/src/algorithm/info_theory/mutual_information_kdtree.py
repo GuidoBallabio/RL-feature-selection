@@ -5,13 +5,15 @@
 
 
 import abc
-import numpy as np
 from functools import partial
-from scipy.special import digamma
-from scipy.spatial.distance import pdist, squareform
-from sklearn.neighbors import KDTree
-from sklearn.preprocessing import scale, normalize
 from multiprocessing import Pool
+
+import numpy as np
+from scipy.spatial.distance import pdist, squareform
+from scipy.special import digamma
+
+from sklearn.neighbors import KDTree
+from sklearn.preprocessing import normalize, scale
 
 
 class MIEstimator(metaclass=abc.ABCMeta):

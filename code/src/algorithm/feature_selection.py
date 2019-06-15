@@ -1,8 +1,10 @@
 import abc
-import numpy as np
-from src.algorithm.utils import independent_roll
-from src.algorithm.info_theory.it_estimator import CachingEstimator
 from enum import Enum
+
+import numpy as np
+
+from src.algorithm.info_theory.it_estimator import CachingEstimator
+from src.algorithm.utils import independent_roll
 
 Bound = Enum("Bound", ['cmi', 'cmi_sqrt', 'entropy'])
 

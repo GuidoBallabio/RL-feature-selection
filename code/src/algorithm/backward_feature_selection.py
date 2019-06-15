@@ -1,5 +1,6 @@
 import numpy as np
-from src.algorithm.feature_selection import FeatureSelector, Bound
+
+from src.algorithm.feature_selection import Bound, FeatureSelector
 from tqdm.autonotebook import tqdm
 
 
