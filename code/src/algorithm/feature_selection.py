@@ -62,10 +62,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         if bound is not Bound.cmi_sqrt:
             gamma = gamma**2
 
-        weights = np.ones(k+1)
-        for t in range(1, k+1):
-            weights[t:] *= gamma
-
+        weights = np.ones(k+1) * gamma
+        weights = weights ** np.arange(k+1)
+            
         if bound is Bound.entropy:
             weights[k] = 1/(1 - gamma)
         else:
