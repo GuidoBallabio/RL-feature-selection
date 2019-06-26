@@ -62,7 +62,6 @@ class FeatureSelector(metaclass=abc.ABCMeta):
     def _generate_steplist(self, k, sampling, freq):
         if sampling == "frequency":
             max_t = (k-1) * freq
-            assert max_t <= self.max_t, f"max timestep {max_t} is larger than the shortest trajectory (len {self.max_t})"
             return np.arange(k*freq, step=freq), max_t
 
         if sampling == "decaying":
@@ -97,9 +96,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.weights = None
 
     @abc.abstractmethod
-    def selectOnError(self, k, gamma, max_error, show_progress=True):
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, show_progress=True):
         pass
 
     @abc.abstractmethod
-    def selectNfeatures(self, n, k, gamma, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, show_progress=True):
         pass
