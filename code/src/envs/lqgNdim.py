@@ -45,6 +45,8 @@ class LQG_nD(gym.Env):
 
         if action_dim is None:
             self.action_dim = n_dim
+        else:
+            self.action_dim = action_dim
 
         self.A = A
         self.B = B
@@ -173,9 +175,9 @@ class LQG_nD(gym.Env):
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-    def optimalPolicy():
+    def optimalPolicy(self):
         K = self.computeOptimalK()
-        return lambda x: np.clip(K @ x, -env.max_action, env.max_action)
+        return lambda x: np.clip(K @ x, -self.max_action, self.max_action)
 
     def computeP(self, K):
         """

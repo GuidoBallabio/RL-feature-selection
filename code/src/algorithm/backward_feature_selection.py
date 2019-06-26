@@ -104,7 +104,7 @@ class BackwardFeatureSelector(FeatureSelector):
 
             for j, t in enumerate(steplist):
                 score_mat[j, i] = self.itEstimator.estimateCMI(
-                    frozenset({self.id_reward}), no_S_i, S_no_i, t=t)
+                    frozenset({self.id_reward}), id, S_no_i, t=t)
             score_mat[k, i] = self.itEstimator.estimateCH(no_S_i, S_no_i)
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
