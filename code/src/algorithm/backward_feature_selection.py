@@ -1,7 +1,7 @@
 import numpy as np
+from tqdm.autonotebook import tqdm
 
 from src.algorithm.feature_selection import FeatureSelector
-from tqdm.autonotebook import tqdm
 
 
 class BackwardFeatureSelector(FeatureSelector):
@@ -70,7 +70,7 @@ class BackwardFeatureSelector(FeatureSelector):
         with tqdm(total=100, disable=not show_progress) as pbar:  # tqdm
             while error <= max_error and len(self.idSelected) > 1:
                 scores = self.scoreFeatures(
-                    steplist, gamma,  optimization, show_progress=show_progress)
+                    steplist, gamma, sum_cmi, show_progress=show_progress)
 
                 if sum_cmi:
                     new_cmi_term = self.residual_error + scores[1][0]
@@ -110,7 +110,7 @@ class BackwardFeatureSelector(FeatureSelector):
             id = frozenset({id})
             S_no_i = S.difference(id)
             no_S_i = no_S.union(id)
-            
+
             if sum_cmi:
                 target = id
             else:

@@ -1,6 +1,6 @@
 import numpy as np
-
 from gym import Wrapper, spaces
+
 from src.wenvs.utils import atleast_2d, dim_of_space, discrete_space_size
 
 
