@@ -71,7 +71,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
                 self.max_t, size=k, replace=False, p=p))
             return steplist, steplist[-1]
 
-    def _get_weights_by_steplist(self, steplist, gamma):
+    def _get_weights_by_steplist(self, steplist, gamma, use_Rt):
         k = len(steplist)
         gamma = gamma**2
 
@@ -80,25 +80,62 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         weights[k] = 1/(1 - gamma) - weights[:-1].sum()
 
+        if use_Rt:
+            Rts = np.abs(self.t_step_data[:, self.id_reward, :]).max(axis=0)
+            Rts = Rts[steplist] ** 2
+
+            weights[:-1] *= Rts
+            weights[k] *= self.Rmax ** 2
+
         return weights
 
-    def computeError(self, residual=None, correction=None):
+    def _prep_all(self, k, gamma, sampling, freq, use_Rt):
+        self.reset()
+        steplist, max_t = self._generate_steplist(k, sampling, freq)
+        self._prep_data(max_t)
+        self.weights = self._get_weights_by_steplist(steplist, gamma, use_Rt)
+
+        return steplist
+
+    def computeError(self, residual=None, correction=None, use_Rt=True):
         if residual is None:
             residual = self.residual_error
         if correction is None:
             correction = self.correction_term
+        if use_Rt:
+            Rmax = 1
+        else:
+            use_Rt = self.Rmax
 
-        return 2**(1/2) * self.Rmax * np.sqrt(residual + correction)
+        return 2**(1/2) * Rmax * np.sqrt(residual + correction)
 
     def reset(self):
         self.residual_error = 0
         self.correction_term = 0
         self.weights = None
 
+    def scoreSubset(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
+
+        S = frozenset(S)
+        no_S = self.idSet.difference(S)
+
+        score = np.zeros(k+1)
+
+        for j, t in enumerate(steplist):
+            score[j] = self.itEstimator.estimateCMI(
+                frozenset({self.id_reward}), no_S, S, t=t)
+        score[k] = self.itEstimator.estimateCH(no_S, S)
+
+        self.residual_error = score[:-1] @ self.weights[:-1]
+        self.correction_term = score[-1] * self.weights[-1]
+
+        return self.computeError(use_Rt=use_Rt)
+
     @abc.abstractmethod
-    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, show_progress=True):
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
         pass
 
     @abc.abstractmethod
-    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
         pass

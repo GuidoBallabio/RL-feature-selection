@@ -1,7 +1,7 @@
 import numpy as np
-from tqdm.autonotebook import tqdm
 
 from src.algorithm.feature_selection import FeatureSelector
+from tqdm.autonotebook import tqdm
 
 
 class BackwardFeatureSelector(FeatureSelector):
@@ -10,17 +10,11 @@ class BackwardFeatureSelector(FeatureSelector):
 
         self.idSelected = set(self.idSet)
 
-    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
         assert n <= self.n_features, f"Features to be selected {n} must be less than  the total" \
             f"number of feature: {self.n_features}"
 
-        self.reset()
-        steplist, max_t = self._generate_steplist(k, sampling, freq)
-
-        self.weights = self._get_weights_by_steplist(steplist, gamma)
-
-        error = 0.0
-        self._prep_data(max_t)
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
 
         for i in tqdm(range(self.n_features - n), disable=not show_progress):
             scores = self.scoreFeatures(
@@ -32,18 +26,12 @@ class BackwardFeatureSelector(FeatureSelector):
             else:
                 self.residual_error = scores[1][0]
             self.correction_term = scores[2][0]
-            error = self.computeError()
+            error = self.computeError(use_Rt=use_Rt)
 
         return self.idSelected.copy(), error
 
-    def try_remove_all(self, k, gamma, sampling="frequency", freq=1, sum_cmi=True, show_progress=True):
-        self.reset()
-        steplist, max_t = self._generate_steplist(k, sampling, freq)
-
-        self.weights = self._get_weights_by_steplist(steplist, gamma)
-
-        error = 0.0
-        self._prep_data(max_t)
+    def try_remove_all(self, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
 
         for i in tqdm(range(self.n_features), disable=not show_progress):
             scores = self.scoreFeatures(
@@ -55,17 +43,13 @@ class BackwardFeatureSelector(FeatureSelector):
             else:
                 self.residual_error = scores[1][0]
             self.correction_term = scores[2][0]
-            error = self.computeError()
+            error = self.computeError(use_Rt=use_Rt)
             yield self.idSelected.copy(), error
 
-    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, show_progress=True):
-        self.reset()
-        steplist, max_t = self._generate_steplist(k, sampling, freq)
-
-        self.weights = self._get_weights_by_steplist(steplist, gamma)
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
 
         error = 0.0
-        self._prep_data(max_t)
 
         with tqdm(total=100, disable=not show_progress) as pbar:  # tqdm
             while error <= max_error and len(self.idSelected) > 1:
@@ -77,7 +61,8 @@ class BackwardFeatureSelector(FeatureSelector):
                 else:
                     new_cmi_term = scores[1][0]
                 new_corr_term = scores[2][0]
-                new_error = self.computeError(new_cmi_term, new_corr_term)
+                new_error = self.computeError(
+                    new_cmi_term, new_corr_term, use_Rt)
 
                 perc_of_max = int(100*new_error/max_error)  # tqdm
                 pbar.update(min(perc_of_max, pbar.total) - pbar.n)  # tqdm
@@ -132,13 +117,8 @@ class BackwardFeatureSelector(FeatureSelector):
         super().reset()
         self.idSelected = set(self.idSet)
 
-    def scoreSubset(self, k, gamma, S, sampling="frequency", freq=1, show_progress=True):
-        self.reset()
-        steplist, max_t = self._generate_steplist(k, sampling, freq)
-
-        self.weights = self._get_weights_by_steplist(steplist, gamma)
-
-        self._prep_data(max_t)
+    def scoreSubset(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
 
         S = frozenset(S)
         no_S = self.idSet.difference(S)
@@ -153,4 +133,4 @@ class BackwardFeatureSelector(FeatureSelector):
         self.residual_error = score[:-1] @ self.weights[:-1]
         self.correction_term = score[-1] * self.weights[-1]
 
-        return self.computeError()
+        return self.computeError(use_Rt=use_Rt)

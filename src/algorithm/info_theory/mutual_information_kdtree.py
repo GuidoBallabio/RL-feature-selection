@@ -11,6 +11,7 @@ from multiprocessing import Pool
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from scipy.special import digamma
+
 from sklearn.neighbors import KDTree
 from sklearn.preprocessing import normalize, scale
 
