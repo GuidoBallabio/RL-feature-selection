@@ -2,11 +2,11 @@ import numpy as np
 from sklearn.ensemble import ExtraTreesRegressor
 from tqdm.autonotebook import tqdm
 
+
 class Qfunction():
     def __init__(self, gamma, regressor=ExtraTreesRegressor, **regr_kwargs):
         self.gamma = gamma
         self.regressor = regressor(n_estimators=50, **regr_kwargs)
-
 
     def _make_db(self, trajectories, features_to_consider):
         sar = [t[:, features_to_consider + [-1]] for t in trajectories]
@@ -15,7 +15,6 @@ class Qfunction():
         db = np.vstack(sarsar)
 
         return db
-
 
     def fit_fqi(self, trajectories, features_to_consider=None, iter_max=50):
         if features_to_consider is None:
@@ -37,9 +36,8 @@ class Qfunction():
         for _ in tqdm(range(iter_max)):
             nextY = r + self.gamma * self.regressor.predict(sa_next)
             self.regressor.fit(sa, nextY)
-            
-        return self
 
+        return self
 
     def __call__(self, sa):
         return self.regressor.predict(sa)

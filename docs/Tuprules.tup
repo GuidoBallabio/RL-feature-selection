@@ -1,1 +1,0 @@
-!toPDF = |> pandoc "%f" -o "%o" |> "%B.pdf"

@@ -180,7 +180,7 @@ class LQG_nD(gym.Env):
 
         K = self.computeOptimalK()
         mu = np.zeros(self.action_dim)
-        action_noise = lambda: np.random.multivariate_normal(mu, Sigma)
+        def action_noise(): return np.random.multivariate_normal(mu, Sigma)
         return lambda x: np.clip(K @ x + action_noise(), -self.max_action, self.max_action)
 
     def computeP(self, K):
