@@ -131,3 +131,29 @@ class BackwardFeatureSelector(FeatureSelector):
     def reset(self):
         super().reset()
         self.idSelected = set(self.idSet)
+
+
+    def scoreSubset(self, k, gamma, S, sampling="frequency", freq=1, show_progress=True):
+        self.reset()
+        steplist, max_t = self._generate_steplist(k, sampling, freq)
+
+        self.weights = self._get_weights_by_steplist(steplist, gamma)
+
+        self._prep_data(max_t)
+        
+        S = frozenset(S)
+        no_S = self.idSet.difference(S)
+        
+        score = np.zeros(k+1)
+        
+        for j, t in enumerate(steplist):
+            score[j] = self.itEstimator.estimateCMI(
+                    frozenset({self.id_reward}), no_S, S, t=t)
+        score[k] = self.itEstimator.estimateCH(no_S, S)
+        
+        self.residual_error = score[:-1] @ self.weights[:-1]
+        self.correction_term = score[-1] * self.weights[-1]
+        
+        return self.computeError()
+        
+        

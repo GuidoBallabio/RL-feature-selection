@@ -174,9 +174,14 @@ class LQG_nD(gym.Env):
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-    def optimalPolicy(self):
+    def optimalPolicy(self, Sigma=0.0):
+        if np.isscalar(Sigma):
+            Sigma = np.eye(self.action_dim) * Sigma
+
         K = self.computeOptimalK()
-        return lambda x: np.clip(K @ x, -self.max_action, self.max_action)
+        mu = np.zeros(self.action_dim)
+        action_noise = lambda: np.random.multivariate_normal(mu, Sigma)
+        return lambda x: np.clip(K @ x + action_noise(), -self.max_action, self.max_action)
 
     def computeP(self, K):
         """
@@ -287,17 +292,17 @@ class LQG_nD(gym.Env):
 
         P = self.computeP(K)
         Qfun = 0
-        for i in range(n_random_xn):
+        for _ in range(n_random_xn):
             noise = self.np_random.normal(
                 size=self.n_dim, scale=self.sigma_noise)
             action_noise = self.np_random.multivariate_normal(
                 np.zeros(self.action_dim), Sigma, 1).reshape(-1)
             nextstate = self.A @ x + self.B @ (u + action_noise) + noise
-            Qfun -= x.T @ self.Q @ x + u.T @ self.R @ u + \
+            delta = x.T @ self.Q @ x + u.T @ self.R @ u + \
                 self.gamma * nextstate.T @ P @ nextstate + \
                 (self.gamma / (1 - self.gamma)) * \
                 np.trace(Sigma @ (self.R + self.gamma * self.B.T @ P @ self.B))
-            Qfun /= 2
+            Qfun -= delta/2
 
         Qfun = np.asscalar(Qfun) / n_random_xn
         return Qfun
