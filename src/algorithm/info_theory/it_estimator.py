@@ -1,6 +1,7 @@
 import abc
 from functools import partial
 from operator import attrgetter
+from multiprocessing import Manager
 
 from cachetools import cachedmethod
 from cachetools.keys import hashkey
@@ -26,13 +27,16 @@ class ItEstimator(metaclass=abc.ABCMeta):
 
 
 class CachingEstimator():
-    def __init__(self, estimator, selector, cached=True):
+    def __init__(self, estimator, selector, cached=True, multiprocessing=False):
         self.selector = selector
         self.estimator = estimator
         self.direct_cmi, self.direct_ch, self.direct_mi = self.estimator.flags()
 
         if cached:
             self.cache = {}
+            if multiprocessing:
+                self.manager = Manager()
+                self.cache = self.manager.dict()
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'cmi'))
     def estimateCMI(self, X_ids, Y_ids, Z_ids, t=0):

@@ -1,4 +1,5 @@
 import abc
+from multiprocessing import Manager, Pool
 
 import numpy as np
 
@@ -10,7 +11,11 @@ class FeatureSelector(metaclass=abc.ABCMeta):
     def __init__(self, itEstimator, trajectories, nproc=1):
         self.trajectories = trajectories
         self.nproc = nproc
-        self.itEstimator = CachingEstimator(itEstimator, self, nproc == 1)
+
+        self.itEstimator = CachingEstimator(itEstimator, self, multiprocessing=nproc!=1)
+
+        if nproc > 1:
+            self.pool = Pool()
 
         self._setup()
 
@@ -19,8 +24,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.id_reward = self.n_features
         self.idSet = frozenset(list(range(self.n_features)))
 
-        self.Rmax = np.max([np.max(np.abs(tr[:, self.id_reward]))
-                            for tr in self.trajectories])
+        # sqrt of max of square of absolute value max
+        self.Rmax = np.max([np.max(np.abs(tr[:, self.id_reward])) ** 2
+                            for tr in self.trajectories]) ** (1/2)
 
         self.max_t = min(len(tr) for tr in self.trajectories)
 
