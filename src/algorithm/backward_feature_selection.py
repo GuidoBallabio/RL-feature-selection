@@ -103,7 +103,7 @@ class BackwardFeatureSelector(FeatureSelector):
                     frozenset({self.id_reward}), target, S_no_i, t=t))
             res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
 
-        res = map(lambda x: x.get(), tqdm(res, leave=False, disable=not show_progress))
+        res = map(lambda x: x.result(), tqdm(res, leave=False, disable=not show_progress))
         score_mat = np.fromiter(res, np.float64).reshape(k + 1, -1, order='F')
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])

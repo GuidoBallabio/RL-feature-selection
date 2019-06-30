@@ -1,7 +1,7 @@
 import abc
 from functools import partial
 from operator import attrgetter
-from multiprocessing import Manager
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 from cachetools import cachedmethod
 from cachetools.keys import hashkey
@@ -77,12 +77,14 @@ class CachingEstimator():
 
         return self.estimator.entropy(X)
 
+def zero():
+    return 0
 
 def diff(x, y):
-    return x.get() - y.get()
+    return x.result() - y.result()
     
 def sumdiff(x, y, z):
-    return x.get() + y.get() - z.get()
+    return x.result() + y.result() - z.result()
 
 class MPCachingEstimator():
     def __init__(self, estimator, selector, nproc, cached=True):
@@ -94,8 +96,8 @@ class MPCachingEstimator():
         if cached:
             self.cache = {}
 
-        self.manager = Manager()
-        self.pool = self.manager.Pool(nproc)
+        self.proc_pool = ProcessPoolExecutor(max_workers=nproc)
+        self.thread_pool = ThreadPoolExecutor()
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'cmi'))
     def estimateCMI(self, X_ids, Y_ids, Z_ids, t=0):
@@ -109,7 +111,7 @@ class MPCachingEstimator():
         Y = self.selector._get_arrays(Y_ids, t)
         Z = self.selector._get_arrays(Z_ids, t)
 
-        return self.pool.apply_async(self.estimator.cmi, (X, Y, Z))
+        return self.proc_pool.submit(self.estimator.cmi, X, Y, Z)
             
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'ch'))
     def estimateCH(self, X_ids, Y_ids, t=0):
@@ -119,7 +121,7 @@ class MPCachingEstimator():
         X = self.selector._get_arrays(X_ids, t)
         Y = self.selector._get_arrays(Y_ids, t)
    
-        return self.pool.apply_async(self.estimator.cond_entropy, (X, Y))
+        return self.proc_pool.submit(self.estimator.cond_entropy, X, Y)
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'mi'))
     def estimateMI(self, X_ids, Y_ids, t=0):
@@ -129,18 +131,19 @@ class MPCachingEstimator():
         X = self.selector._get_arrays(X_ids, t)
         Y = self.selector._get_arrays(Y_ids, t)
 
-        return self.pool.apply_async(self.estimator.mi, (X, Y))
+        return self.proc_pool.submit(self.estimator.mi, X, Y)
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'h'))
     def estimateH(self, ids, t=0):
         if not ids:
-            return 0
+            return self.thread_pool.submit(zero)
         X = self.selector._get_arrays(ids, t)
 
-        return self.pool.apply_async(self.estimator.entropy, (X,))
+        return self.proc_pool.submit(self.estimator.entropy, X)
     
     def _defer_diff(self, a, b):
-        return self.pool.apply_async(diff, (a , b))
+        return self.thread_pool.submit(diff, a , b)
 
     def _defer_sumdiff(self, a, b, c):
-        return self.pool.apply_async(sumdiff, (a , b, c))
+        return self.thread_pool.submit(sumdiff, a , b, c)
+        
