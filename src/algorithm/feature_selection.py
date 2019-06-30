@@ -3,7 +3,7 @@ from multiprocessing import Manager, Pool
 
 import numpy as np
 
-from src.algorithm.info_theory.it_estimator import CachingEstimator
+from src.algorithm.info_theory.it_estimator import CachingEstimator, MPCachingEstimator
 from src.algorithm.utils import independent_roll
 
 
@@ -12,10 +12,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.trajectories = trajectories
         self.nproc = nproc
 
-        self.itEstimator = CachingEstimator(itEstimator, self, multiprocessing=nproc!=1)
-
-        if nproc > 1:
-            self.pool = Pool()
+        if nproc!=1:
+            self.itEstimator = MPCachingEstimator(itEstimator, self, nproc=nproc)
+        else :
+            self.itEstimator = CachingEstimator(itEstimator, self)
 
         self._setup()
 
@@ -60,10 +60,16 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         return self.t_step_data[:, ids, t]
 
     def scoreFeatures(self, *args, **kwargs):
-        if self.nproc > 1:
+        if self.nproc != 1:
             return self._scoreFeatureParallel(*args, **kwargs)
         else:
             return self._scoreFeatureSequential(*args, **kwargs)
+
+    def scoreSubset(self, *args, **kwargs):
+        if self.nproc != 1:
+            return self._scoreSubsetParallel(*args, **kwargs)
+        else:
+            return self._scoreSubsetSequential(*args, **kwargs)
 
     def _generate_steplist(self, k, sampling, freq):
         if sampling == "frequency":
@@ -120,7 +126,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.correction_term = 0
         self.weights = None
 
-    def scoreSubset(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
+    def _scoreSubsetSequential(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
 
         S = frozenset(S)

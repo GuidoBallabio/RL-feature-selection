@@ -53,7 +53,7 @@ class NNEntropyEstimator(ItEstimator):
         for i in range(nPoints):
             neighbors = KDTree(np.delete(datapoints, i, axis=0))
             dist, nearest = neighbors.query(datapoints[i, :].reshape(1, -1), 1)
-            dist = dist[0]
+            dist = dist[0][0]
             entropy += np.log(nPoints * dist + self.EPS)
 
         return entropy / nPoints + np.log(2) + np.euler_gamma

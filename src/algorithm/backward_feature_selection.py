@@ -86,10 +86,8 @@ class BackwardFeatureSelector(FeatureSelector):
         no_S = self.idSet.difference(self.idSelected)  # discarded
 
         list_ids = np.fromiter(S, dtype=np.int)
-        score_mat = np.zeros((k+1, len(list_ids)))
 
-        cmi_args = []
-        h_args = []
+        res = []
         for i, id in enumerate(list_ids):
             id = frozenset({id})
             S_no_i = S.difference(id)
@@ -101,22 +99,19 @@ class BackwardFeatureSelector(FeatureSelector):
                 target = no_S_i
 
             for j, t in enumerate(steplist):
-                cmi_args.append((frozenset({self.id_reward}), target, S_no_i, t))
-            h_args.append((no_S_i, S_no_i))
+                res.append(self.itEstimator.estimateCMI(
+                    frozenset({self.id_reward}), target, S_no_i, t=t))
+            res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
 
-        cmi_res = self.pool.starmap(self.itEstimator.estimateCMI, cmi_args)
-        h_res = self.pool.starmap(self.itEstimator.estimateCH, h_args)
-
-        score_mat[:-1, :] = np.fromiter(cmi_res, np.float).reshape(k, -1, order='F')
-        score_mat[-1, :] = np.fromiter(h_res, np.float)
+        res = map(lambda x: x.get(), tqdm(res, leave=False, disable=not show_progress))
+        score_mat = np.fromiter(res, np.float64).reshape(k + 1, -1, order='F')
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
         new_cond_entropy = self.weights[-1] * score_mat[-1, :]
 
         sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
 
-        return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]
-        
+        return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]        
 
     def _scoreFeatureSequential(self, steplist, gamma, sum_cmi, show_progress):
         k = len(steplist)
