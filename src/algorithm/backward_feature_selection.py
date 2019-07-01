@@ -10,6 +10,10 @@ class BackwardFeatureSelector(FeatureSelector):
 
         self.idSelected = set(self.idSet)
 
+    def reset(self):
+        super().reset()
+        self.idSelected = set(self.idSet)
+
     def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
         assert n <= self.n_features, f"Features to be selected {n} must be less than  the total" \
             f"number of feature: {self.n_features}"
@@ -103,7 +107,8 @@ class BackwardFeatureSelector(FeatureSelector):
                     frozenset({self.id_reward}), target, S_no_i, t=t))
             res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
 
-        res = map(lambda x: x.result(), tqdm(res, leave=False, disable=not show_progress))
+        res = map(lambda x: x.result(), tqdm(
+            res, leave=False, disable=not show_progress))
         score_mat = np.fromiter(res, np.float64).reshape(k + 1, -1, order='F')
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
@@ -111,7 +116,7 @@ class BackwardFeatureSelector(FeatureSelector):
 
         sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
 
-        return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]        
+        return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]
 
     def _scoreFeatureSequential(self, steplist, gamma, sum_cmi, show_progress):
         k = len(steplist)
@@ -143,25 +148,3 @@ class BackwardFeatureSelector(FeatureSelector):
         sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
 
         return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]
-
-    def reset(self):
-        super().reset()
-        self.idSelected = set(self.idSet)
-
-    def scoreSubset(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
-        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
-
-        S = frozenset(S)
-        no_S = self.idSet.difference(S)
-
-        score = np.zeros(k+1)
-
-        for j, t in enumerate(steplist):
-            score[j] = self.itEstimator.estimateCMI(
-                frozenset({self.id_reward}), no_S, S, t=t)
-        score[k] = self.itEstimator.estimateCH(no_S, S)
-
-        self.residual_error = score[:-1] @ self.weights[:-1]
-        self.correction_term = score[-1] * self.weights[-1]
-
-        return self.computeError(use_Rt=use_Rt)

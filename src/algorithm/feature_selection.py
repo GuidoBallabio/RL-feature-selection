@@ -2,7 +2,8 @@ import abc
 
 import numpy as np
 
-from src.algorithm.info_theory.it_estimator import CachingEstimator, MPCachingEstimator
+from src.algorithm.info_theory.it_estimator import (CachingEstimator,
+                                                    MPCachingEstimator)
 from src.algorithm.utils import independent_roll
 
 
@@ -11,9 +12,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.trajectories = trajectories
         self.nproc = nproc
 
-        if nproc!=1:
-            self.itEstimator = MPCachingEstimator(itEstimator, self, nproc=nproc)
-        else :
+        if nproc != 1:
+            self.itEstimator = MPCachingEstimator(
+                itEstimator, self, nproc=nproc)
+        else:
             self.itEstimator = CachingEstimator(itEstimator, self)
 
         self._setup()
@@ -137,6 +139,27 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             score[j] = self.itEstimator.estimateCMI(
                 frozenset({self.id_reward}), no_S, S, t=t)
         score[k] = self.itEstimator.estimateCH(no_S, S)
+
+        self.residual_error = score[:-1] @ self.weights[:-1]
+        self.correction_term = score[-1] * self.weights[-1]
+
+        return self.computeError(use_Rt=use_Rt)
+
+    def _scoreSubsetParallel(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
+
+        S = frozenset(S)
+        no_S = self.idSet.difference(S)
+
+        res = []
+        for t in steplist:
+            res.append(self.itEstimator.estimateCMI(
+                frozenset({self.id_reward}), no_S, S, t=t))
+        res.append(self.itEstimator.estimateCH(no_S, S))
+
+        res = map(lambda x: x.result(), tqdm(
+            res, leave=False, disable=not show_progress))
+        score = np.fromiter(res, np.float64)
 
         self.residual_error = score[:-1] @ self.weights[:-1]
         self.correction_term = score[-1] * self.weights[-1]
