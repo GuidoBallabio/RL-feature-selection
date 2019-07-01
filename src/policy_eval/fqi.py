@@ -4,7 +4,7 @@ from sklearn.ensemble import ExtraTreesRegressor
 from tqdm.autonotebook import tqdm
 
 
-class Qfunction():
+class QfunctionFQI():
     def __init__(self, gamma, regressor=ExtraTreesRegressor, **regr_kwargs):
         self.gamma = gamma
         self.regressor = regressor(n_estimators=50, **regr_kwargs)
@@ -17,7 +17,7 @@ class Qfunction():
 
         return db
 
-    def fit_fqi(self, trajectories, features_to_consider=None, iter_max=50):
+    def fit(self, trajectories, features_to_consider=None, iter_max=50):
         if features_to_consider is None:
             features_to_consider = list(range(trajectories[0].shape[1]-1))
 
