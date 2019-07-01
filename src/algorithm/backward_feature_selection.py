@@ -14,11 +14,11 @@ class BackwardFeatureSelector(FeatureSelector):
         super().reset()
         self.idSelected = set(self.idSet)
 
-    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
         assert n <= self.n_features, f"Features to be selected {n} must be less than  the total" \
             f"number of feature: {self.n_features}"
 
-        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         for i in tqdm(range(self.n_features - n), disable=not show_progress):
             scores = self.scoreFeatures(
@@ -34,8 +34,8 @@ class BackwardFeatureSelector(FeatureSelector):
 
         return self.idSelected.copy(), error
 
-    def try_remove_all(self, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
-        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
+    def try_remove_all(self, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         for i in tqdm(range(self.n_features), disable=not show_progress):
             scores = self.scoreFeatures(
@@ -50,8 +50,8 @@ class BackwardFeatureSelector(FeatureSelector):
             error = self.computeError(use_Rt=use_Rt)
             yield self.idSelected.copy(), error
 
-    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
-        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         error = 0.0
 

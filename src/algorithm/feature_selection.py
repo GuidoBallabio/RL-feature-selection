@@ -34,7 +34,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.residual_error = 0
         self.correction_term = 0
 
-    def _prep_data(self, max_t):
+    def _prep_data(self, max_t, on_mu):
         if hasattr(self, 't_step_data') and max_t + 1 == self.t_step_data.shape[2]:
             return
 
@@ -43,12 +43,18 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         shift = np.zeros(self.n_features + 1, dtype=np.int)
         shift[self.id_reward] = -1
 
+        if on_mu:
+            stop_len = 1
+        else:
+            stop_len = k
+
         self.t_step_data = []
         for t in range(max_t + 1):
             t_shift = t*shift
             t_step_eps = []
             for ep in self.trajectories:
-                t_step_eps.append(independent_roll(ep, t_shift)[0, :])
+                t_step_eps.append(independent_roll(
+                    ep, t_shift)[0: stop_len, :])
 
             self.t_step_data.append(np.vstack(t_step_eps))
 
@@ -59,18 +65,6 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             ids = list(ids)
 
         return self.t_step_data[:, ids, t]
-
-    def scoreFeatures(self, *args, **kwargs):
-        if self.nproc != 1:
-            return self._scoreFeatureParallel(*args, **kwargs)
-        else:
-            return self._scoreFeatureSequential(*args, **kwargs)
-
-    def scoreSubset(self, *args, **kwargs):
-        if self.nproc != 1:
-            return self._scoreSubsetParallel(*args, **kwargs)
-        else:
-            return self._scoreSubsetSequential(*args, **kwargs)
 
     def _generate_steplist(self, k, sampling, freq):
         if sampling == "frequency":
@@ -102,13 +96,25 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         return weights
 
-    def _prep_all(self, k, gamma, sampling, freq, use_Rt):
+    def _prep_all(self, k, gamma, sampling, freq, use_Rt, on_mu):
         self.reset()
         steplist, max_t = self._generate_steplist(k, sampling, freq)
-        self._prep_data(max_t)
+        self._prep_data(max_t, on_mu)
         self.weights = self._get_weights_by_steplist(steplist, gamma, use_Rt)
 
         return steplist
+
+    def scoreFeatures(self, *args, **kwargs):
+        if self.nproc != 1:
+            return self._scoreFeatureParallel(*args, **kwargs)
+        else:
+            return self._scoreFeatureSequential(*args, **kwargs)
+
+    def scoreSubset(self, *args, **kwargs):
+        if self.nproc != 1:
+            return self._scoreSubsetParallel(*args, **kwargs)
+        else:
+            return self._scoreSubsetSequential(*args, **kwargs)
 
     def computeError(self, residual=None, correction=None, use_Rt=True):
         if residual is None:
