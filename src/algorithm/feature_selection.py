@@ -31,22 +31,29 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         self.max_t = min(len(tr) for tr in self.trajectories)
 
+        self.data_per_traj = np.dstack(
+            [tr[:self.max_t, :] for tr in self.trajectories])
+        self.on_mu = None
+
         self.residual_error = 0
         self.correction_term = 0
 
     def _prep_data(self, max_t, on_mu):
-        if hasattr(self, 't_step_data') and max_t + 1 == self.t_step_data.shape[2]:
+        if hasattr(self, 't_step_data') and max_t + 1 == self.t_step_data.shape[2] and on_mu == self.on_mu:
             return
+        
+        self.itEstimator.cache.clear()
 
         assert max_t < self.max_t, f"max timestep {max_t} is not less than the shortest trajectory (len {self.max_t})"
 
-        shift = np.zeros(self.n_features + 1, dtype=np.int)
-        shift[self.id_reward] = -1
-
+        self.on_mu = on_mu
         if on_mu:
             stop_len = 1
         else:
-            stop_len = k
+            stop_len = max_t
+
+        shift = np.zeros(self.n_features + 1, dtype=np.int)
+        shift[self.id_reward] = -1
 
         self.t_step_data = []
         for t in range(max_t + 1):
@@ -54,7 +61,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             t_step_eps = []
             for ep in self.trajectories:
                 t_step_eps.append(independent_roll(
-                    ep, t_shift)[0: stop_len, :])
+                    ep, t_shift)[: stop_len, :])
 
             self.t_step_data.append(np.vstack(t_step_eps))
 
@@ -78,6 +85,12 @@ class FeatureSelector(metaclass=abc.ABCMeta):
                 self.max_t, size=k, replace=False, p=p))
             return steplist, steplist[-1]
 
+        if sampling == "variance":
+            variances = np.var(self.data_per_traj[:, fs.id_reward, :], axis=1)
+            most_var = np.argsort(variances)[::-1][:k]
+            steplist = np.sort(most_var)
+            return steplist, steplist[-1]
+
     def _get_weights_by_steplist(self, steplist, gamma, use_Rt):
         k = len(steplist)
         gamma = gamma**2
@@ -88,7 +101,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         weights[k] = 1/(1 - gamma) - weights[:-1].sum()
 
         if use_Rt:
-            Rts = np.abs(self.t_step_data[:, self.id_reward, :]).max(axis=0)
+            Rts = np.abs(self.data_per_traj[:, self.id_reward, :]).max(axis=1)
             Rts = Rts[steplist] ** 2
 
             weights[:-1] *= Rts
@@ -124,7 +137,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         if use_Rt:
             Rmax = 1
         else:
-            use_Rt = self.Rmax
+            Rmax = self.Rmax
 
         return 2**(1/2) * Rmax * np.sqrt(residual + correction)
 
