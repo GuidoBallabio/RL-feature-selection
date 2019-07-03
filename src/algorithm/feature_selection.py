@@ -14,9 +14,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         if nproc != 1:
             self.itEstimator = MPCachingEstimator(
-                itEstimator, self, nproc=nproc)
+                itEstimator, self._get_arrays, nproc=nproc)
         else:
-            self.itEstimator = CachingEstimator(itEstimator, self)
+            self.itEstimator = CachingEstimator(itEstimator, self._get_arrays)
 
         self._setup()
 
@@ -41,7 +41,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
     def _prep_data(self, max_t, on_mu):
         if hasattr(self, 't_step_data') and max_t + 1 == self.t_step_data.shape[2] and on_mu == self.on_mu:
             return
-        
+
         self.itEstimator.cache.clear()
 
         assert max_t < self.max_t, f"max timestep {max_t} is not less than the shortest trajectory (len {self.max_t})"

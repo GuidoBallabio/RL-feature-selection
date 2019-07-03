@@ -1,5 +1,4 @@
 import numpy as np
-
 from sklearn.ensemble import ExtraTreesRegressor
 from tqdm.autonotebook import tqdm
 
@@ -19,8 +18,9 @@ class QfunctionAsSum():
         n = len(features_to_consider)
         self.min_len = min([len(t) for t in trajectories])
         self.weights = self.gamma ** np.arange(self.min_len)
-        
-        data = np.dstack([t[:self.min_len, features_to_consider + [-1]] for t in trajectories]).transpose(2, 0, 1)
+
+        data = np.dstack([t[:self.min_len, features_to_consider + [-1]]
+                          for t in trajectories]).transpose(2, 0, 1)
 
         for i in range(self.min_len):
             regr = self.regressor(n_estimators=50, **self.regr_kwargs)
@@ -35,4 +35,3 @@ class QfunctionAsSum():
         if correction_term:
             value += r[:, -1] * (self.gamma ** self.min_len) / (1 - self.gamma)
         return value
-        

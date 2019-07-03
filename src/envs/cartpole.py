@@ -6,9 +6,8 @@ permalink: https://perma.cc/C9ZM-652R
 
 import math
 
-import numpy as np
-
 import gym
+import numpy as np
 from gym import logger, spaces
 from gym.utils import seeding
 

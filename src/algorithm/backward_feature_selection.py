@@ -1,7 +1,7 @@
 import numpy as np
+from tqdm.autonotebook import tqdm
 
 from src.algorithm.feature_selection import FeatureSelector
-from tqdm.autonotebook import tqdm
 
 
 class BackwardFeatureSelector(FeatureSelector):

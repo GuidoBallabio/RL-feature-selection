@@ -1,7 +1,6 @@
 """classic Linear Quadratic Gaussian Regulator task"""
-import numpy as np
-
 import gym
+import numpy as np
 from gym import error, spaces, utils
 from gym.utils import seeding
 

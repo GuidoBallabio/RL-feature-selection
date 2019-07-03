@@ -1,10 +1,18 @@
 ## envs
-
 gym
 gym[classic_control]
 
 ## algorithms
-
 stable_baselines
-
 #tensorflow (gpu eventually)
+
+## utils
+numpy
+scipy
+sklearn
+cachetools
+tqdm
+
+## entropy
+git+https://github.com/gregversteeg/NPEET.git
+
