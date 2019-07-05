@@ -44,12 +44,13 @@ def independent_roll(arr, shifts, axis=0):
     return arr
 
 
-def episodes_with_len(wenv, num_ep, len_ep, policy=None):
+def episodes_with_len(wenv, num_ep, len_ep, policy=None, stop_at_len=True):
     """Return a list of 'num_ep' episodes of length `len_ep`.
     """
+    iterMax = len_ep if stop_at_len else 200
     l = []
     while len(l) < num_ep:
-        ep = wenv.run_episode(policy=policy, iterMax=len_ep)
+        ep = wenv.run_episode(policy=policy, iterMax=iterMax)
         if len(ep[2]) >= len_ep:
             l.append(np.hstack(ep))
     return l
