@@ -4,8 +4,10 @@ from numpy import pi
 from scipy.special import gamma, psi
 from sklearn.neighbors import KDTree, NearestNeighbors
 
+from src.algorithm.info_theory.entropy import NNEntropyEstimator
 from src.algorithm.info_theory.it_estimator import ItEstimator
 from src.algorithm.info_theory.mutual_information import MixedRvMiEstimator
+
 
 class NpeetEstimator(ItEstimator):
     def __init__(self):
@@ -13,7 +15,7 @@ class NpeetEstimator(ItEstimator):
 
     def entropy(self, X):
         np.random.seed(0)
-        return ee.entropy(X)
+        return ee.entropy(X.copy(order='C'))
 
     def mi(self, X, Y):
         np.random.seed(0)
@@ -26,21 +28,23 @@ class NpeetEstimator(ItEstimator):
     def flags(self):
         return True, False, True
 
+
 class CmiEstimator(ItEstimator):
-    def __init__(self):
-        self.est = MixedRvMiEstimator(3)
+    def __init__(self, nproc=1):
+        self.h_est = NNEntropyEstimator(nproc=nproc)
+        self.mi_est = MixedRvMiEstimator(3)
 
     def entropy(self, X):
         np.random.seed(0)
-        return ee.entropy(X)
+        return self.h_est.entropy(X.copy(order='C'))
 
     def mi(self, X, Y):
         np.random.seed(0)
-        return self.est.estimateMI(X.copy(order='C'), Y.copy(order='C'))
+        return self.mi_est.estimateMI(X.copy(order='C'), Y.copy(order='C'))
 
     def cmi(self, X, Y, Z):
         np.random.seed(0)
-        return self.est.estimateConditionalMI(X.copy(order='C'), Y.copy(order='C'), Z.copy(order='C'))
+        return self.mi_est.estimateConditionalMI(X.copy(order='C'), Y.copy(order='C'), Z.copy(order='C'))
 
     def flags(self):
         return True, False, True
@@ -81,5 +85,3 @@ class FastNNEntropyEstimator(ItEstimator):
 
     def flags(self):
         return False, False, False
-
-

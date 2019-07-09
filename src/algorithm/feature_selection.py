@@ -29,10 +29,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.Rmax = np.max([np.max(np.abs(tr[:, self.id_reward])) ** 2
                             for tr in self.trajectories]) ** (1/2)
 
-        self.max_t = min(len(tr) for tr in self.trajectories)
+        self.tot_t = min(len(tr) for tr in self.trajectories)
 
         self.data_per_traj = np.dstack(
-            [tr[:self.max_t, :] for tr in self.trajectories])
+            [tr[:self.tot_t, :] for tr in self.trajectories])
         self.on_mu = None
 
         self.residual_error = 0
@@ -44,13 +44,13 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         self.itEstimator.cache.clear()
 
-        assert max_t < self.max_t, f"max timestep {max_t} is not less than the shortest trajectory (len {self.max_t})"
+        assert max_t < self.tot_t, f"max timestep {max_t} is not less than the shortest trajectory (len {self.tot_t})"
 
         self.on_mu = on_mu
         if on_mu:
             stop_len = 1
         else:
-            stop_len = max_t
+            stop_len = self.tot_t - max_t
 
         shift = np.zeros(self.n_features + 1, dtype=np.int)
         shift[self.id_reward] = -1
@@ -79,17 +79,20 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             return np.arange(k*freq, step=freq), max_t
 
         if sampling == "decaying":
-            p = np.exp(-np.arange(self.max_t)/freq) / freq
+            p = np.exp(-np.arange(self.tot_t)/freq) / freq
             p = p/p.sum()
             steplist = np.sort(np.random.choice(
-                self.max_t, size=k, replace=False, p=p))
+                self.tot_t, size=k, replace=False, p=p))
             return steplist, steplist[-1]
 
         if sampling == "variance":
-            variances = np.var(self.data_per_traj[:, fs.id_reward, :], axis=1)
+            variances = np.var(
+                self.data_per_traj[:, self.id_reward, :], axis=1)
             most_var = np.argsort(variances)[::-1][:k]
             steplist = np.sort(most_var)
             return steplist, steplist[-1]
+
+        raise NotImplemented
 
     def _get_weights_by_steplist(self, steplist, gamma, use_Rt):
         k = len(steplist)
@@ -112,6 +115,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
     def _prep_all(self, k, gamma, sampling, freq, use_Rt, on_mu):
         self.reset()
         steplist, max_t = self._generate_steplist(k, sampling, freq)
+        self.steplist = steplist
         self._prep_data(max_t, on_mu)
         self.weights = self._get_weights_by_steplist(steplist, gamma, use_Rt)
 
@@ -145,9 +149,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.residual_error = 0
         self.correction_term = 0
         self.weights = None
+        self.steplist = None
 
-    def _scoreSubsetSequential(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
-        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
+    def _scoreSubsetSequential(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         S = frozenset(S)
         no_S = self.idSet.difference(S)
@@ -164,8 +169,8 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         return self.computeError(use_Rt=use_Rt)
 
-    def _scoreSubsetParallel(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, show_progress=True):
-        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt)
+    def _scoreSubsetParallel(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
+        steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         S = frozenset(S)
         no_S = self.idSet.difference(S)
@@ -176,8 +181,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
                 frozenset({self.id_reward}), no_S, S, t=t))
         res.append(self.itEstimator.estimateCH(no_S, S))
 
-        res = map(lambda x: x.result(), tqdm(
-            res, leave=False, disable=not show_progress))
+        res = map(lambda x: x.result(), res)
         score = np.fromiter(res, np.float64)
 
         self.residual_error = score[:-1] @ self.weights[:-1]
