@@ -190,9 +190,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         return self.computeError(use_Rt=use_Rt)
 
     @abc.abstractmethod
-    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
         pass
 
     @abc.abstractmethod
-    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
         pass

@@ -1,8 +1,7 @@
 import numpy as np
 from npeet import entropy_estimators as ee
-from numpy import pi
-from scipy.special import gamma, psi
-from sklearn.neighbors import KDTree, NearestNeighbors
+from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors.kde import KernelDensity
 
 from src.algorithm.info_theory.entropy import NNEntropyEstimator
 from src.algorithm.info_theory.it_estimator import ItEstimator
@@ -59,6 +58,8 @@ class FastNNEntropyEstimator(ItEstimator):
     def estimateFromData(self, datapoints):
         entropy = 0.0
         n, d = datapoints.shape
+        k = 1
+
         ma = np.ones(n, dtype=np.bool)
         unit = n // self.kfold
         rem = n % self.kfold
@@ -68,19 +69,66 @@ class FastNNEntropyEstimator(ItEstimator):
         for i in range(self.kfold):
             sel = np.arange(start, end)
             ma[start:end] = False
-            arr = datapoints[ma, :]
+            curr = datapoints[ma, :]
 
-            neighbors = KDTree(arr)
-            dist, _ = neighbors.query(datapoints[sel, :], 1)
-            entropy += np.log((unit * dist).sum() + self.EPS)
+            nn = NearestNeighbors(n_neighbors=k).fit(curr)
+            dist, _ = nn.kneighbors(datapoints[sel, :])
+            entropy += np.log(n * dist + self.EPS).sum()
 
             ma[:] = True
-            start += unit
+            start = end
             end = min(unit + end, n)
 
         return entropy / n + np.log(2) + np.euler_gamma
 
     def entropy(self, X):
+        np.random.seed(0)
+        return self.estimateFromData(X)
+
+    def flags(self):
+        return False, False, False
+
+
+class KDEntropyEstimator(ItEstimator):
+    def __init__(self, kernel="gaussian",  min_log_proba=-500, bandwith=1.0, kfold=10):
+        self.kde = KernelDensity(kernel=kernel, bandwidth=bandwith)
+        self.min_log_proba = min_log_proba
+        self.kfold = kfold
+
+    def estimateFromData(self, datapoints):
+        if len(datapoints.shape) == 1:
+            datapoints = np.expand_dims(datapoints, 1)
+
+        entropy = 0.0
+
+        n, d = datapoints.shape
+        ma = np.ones(n, dtype=np.bool)
+        unit = n // self.kfold
+        rem = n % self.kfold
+
+        start = 0
+        end = unit + rem
+        for i in range(self.kfold):
+            sel = np.arange(start, end)
+            ma[start:end] = False
+            curr = datapoints[ma, :]
+
+            self.kde.fit(curr)
+            score = self.kde.score(datapoints[sel, :])
+
+            ma[:] = True
+            start = end
+            end = min(unit + end, n)
+
+            if score < self.min_log_proba:
+                continue
+
+            entropy -= score
+
+        return entropy / n
+
+    def entropy(self, X):
+        np.random.seed(0)
         return self.estimateFromData(X)
 
     def flags(self):

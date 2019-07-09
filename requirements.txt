@@ -1,6 +1,7 @@
 ## envs
 gym
 gym[classic_control]
+gym[box2d]
 
 ## algorithms
 stable_baselines

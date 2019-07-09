@@ -25,7 +25,7 @@ class LeveOneOutEntropyEstimator(ItEstimator):
         for i in range(datapoints.shape[0]):
             curr = np.delete(datapoints, i, axis=0)
             self.kde.fit(curr)
-            score = self.kde.score(np.array([datapoints[i, :]]))
+            score = self.kde.score(datapoints[None, i, :])
             if score < self.min_log_proba:
                 print(score)
                 continue
