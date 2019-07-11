@@ -14,7 +14,7 @@ class BackwardFeatureSelector(FeatureSelector):
         super().reset()
         self.idSelected = set(self.idSet)
 
-    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         assert n <= self.n_features, f"Features to be selected {n} must be less than  the total" \
             f"number of feature: {self.n_features}"
 
@@ -22,35 +22,29 @@ class BackwardFeatureSelector(FeatureSelector):
 
         for i in tqdm(range(self.n_features - n), disable=not show_progress):
             scores = self.scoreFeatures(
-                steplist, gamma, sum_cmi, show_progress=show_progress)
+                steplist, gamma, show_progress=show_progress)
 
             self.idSelected.remove(scores[0][0])
-            if sum_cmi:
-                self.residual_error += scores[1][0]
-            else:
-                self.residual_error = scores[1][0]
+            self.residual_error += scores[1][0]
             self.correction_term = scores[2][0]
             error = self.computeError(use_Rt=use_Rt)
 
         return self.idSelected.copy(), error
 
-    def try_remove_all(self, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
+    def try_remove_all(self, k, gamma, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         for i in tqdm(range(self.n_features), disable=not show_progress):
             scores = self.scoreFeatures(
-                steplist, gamma, sum_cmi, show_progress=show_progress)
+                steplist, gamma, show_progress=show_progress)
 
             self.idSelected.remove(scores[0][0])
-            if sum_cmi:
-                self.residual_error += scores[1][0]
-            else:
-                self.residual_error = scores[1][0]
+            self.residual_error += scores[1][0]
             self.correction_term = scores[2][0]
             error = self.computeError(use_Rt=use_Rt)
             yield self.idSelected.copy(), error
 
-    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         error = 0.0
@@ -58,12 +52,9 @@ class BackwardFeatureSelector(FeatureSelector):
         with tqdm(total=100, disable=not show_progress) as pbar:  # tqdm
             while error <= max_error and len(self.idSelected) > 1:
                 scores = self.scoreFeatures(
-                    steplist, gamma, sum_cmi, show_progress=show_progress)
+                    steplist, gamma, show_progress=show_progress)
 
-                if sum_cmi:
-                    new_cmi_term = self.residual_error + scores[1][0]
-                else:
-                    new_cmi_term = scores[1][0]
+                new_cmi_term = self.residual_error + scores[1][0]
                 new_corr_term = scores[2][0]
                 new_error = self.computeError(
                     new_cmi_term, new_corr_term, use_Rt)
@@ -83,7 +74,7 @@ class BackwardFeatureSelector(FeatureSelector):
 
         return self.idSelected.copy(), error
 
-    def _scoreFeatureParallel(self, steplist, gamma, sum_cmi, show_progress):
+    def _scoreFeatureParallel(self, steplist, gamma, show_progress):
         k = len(steplist)
 
         S = frozenset(self.idSelected)
@@ -97,14 +88,9 @@ class BackwardFeatureSelector(FeatureSelector):
             S_no_i = S.difference(id)
             no_S_i = no_S.union(id)
 
-            if sum_cmi:
-                target = id
-            else:
-                target = no_S_i
-
             for j, t in enumerate(steplist):
                 res.append(self.itEstimator.estimateCMI(
-                    frozenset({self.id_reward}), target, S_no_i, t=t))
+                    frozenset({self.id_reward}), id, S_no_i, t=t))
             res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
 
         res = map(lambda x: x.result(), tqdm(
@@ -118,7 +104,7 @@ class BackwardFeatureSelector(FeatureSelector):
 
         return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx]
 
-    def _scoreFeatureSequential(self, steplist, gamma, sum_cmi, show_progress):
+    def _scoreFeatureSequential(self, steplist, gamma, show_progress):
         k = len(steplist)
 
         S = frozenset(self.idSelected)
@@ -132,14 +118,9 @@ class BackwardFeatureSelector(FeatureSelector):
             S_no_i = S.difference(id)
             no_S_i = no_S.union(id)
 
-            if sum_cmi:
-                target = id
-            else:
-                target = no_S_i
-
             for j, t in enumerate(steplist):
                 score_mat[j, i] = self.itEstimator.estimateCMI(
-                    frozenset({self.id_reward}), target, S_no_i, t=t)
+                    frozenset({self.id_reward}), id, S_no_i, t=t)
             score_mat[k, i] = self.itEstimator.estimateCH(no_S_i, S_no_i)
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])

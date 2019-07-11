@@ -46,7 +46,28 @@ def independent_roll(arr, shifts, axis=0):
 
 def episodes_with_len(wenv, num_ep, len_ep, policy=None, stop_at_len=True):
     """Return a list of 'num_ep' episodes of length `len_ep`.
+
+    Parameters
+    ----------
+    wenv : WrapperEnv
+        A wrapped environment, most notably with a run_episode function.
+
+    num_ep: int
+        Number of episodes/trajectories to be generates.
+
+    len_ep: int
+        Minimum length of the episodes generated.
+
+    stop_at_len: boolean, optional
+        If True the trajectories are truncated at the `len_ep` timestep, 
+        otherwise it is left arbitrarly long (until it's done). 
+        (Default is True)
+
+    policy: fun(obs)->act
+        A valid policy for the `wenv`, if None the random policy is
+        selected. (Default is None)
     """
+
     iterMax = len_ep if stop_at_len else 200
     l = []
     while len(l) < num_ep:

@@ -244,3 +244,7 @@ class WrapperEnv(Wrapper):
 
     def reset(self, **kwargs):
         return self._wrap_obs(self.env.reset(**kwargs))
+
+    def seed(self, seed=None):
+        self.action_space.seed(seed)
+        return self.env.seed(seed)

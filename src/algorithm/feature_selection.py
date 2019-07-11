@@ -18,6 +18,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         else:
             self.itEstimator = CachingEstimator(itEstimator, self._get_arrays)
 
+        self.seed()
         self._setup()
 
     def _setup(self):
@@ -81,7 +82,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         if sampling == "decaying":
             p = np.exp(-np.arange(self.tot_t)/freq) / freq
             p = p/p.sum()
-            steplist = np.sort(np.random.choice(
+            steplist = np.sort(self.np_random.choice(
                 self.tot_t, size=k, replace=False, p=p))
             return steplist, steplist[-1]
 
@@ -151,6 +152,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.weights = None
         self.steplist = None
 
+    def seed(self, seed=None):
+        self.np_random = np.random.seed(seed)
+        return
+
     def _scoreSubsetSequential(self, k, gamma, S, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
@@ -190,9 +195,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         return self.computeError(use_Rt=use_Rt)
 
     @abc.abstractmethod
-    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         pass
 
     @abc.abstractmethod
-    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, sum_cmi=True, use_Rt=True, on_mu=True, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         pass
