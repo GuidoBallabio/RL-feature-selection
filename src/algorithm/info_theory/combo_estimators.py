@@ -30,8 +30,8 @@ class NpeetEstimator(ItEstimator):
 
 class CmiEstimator(ItEstimator):
     def __init__(self, nproc=1):
-        self.h_est = NNEntropyEstimator(nproc=nproc)
-        self.mi_est = MixedRvMiEstimator(3)
+        self.h_est = NNEntropyEstimator()
+        self.mi_est = MixedRvMiEstimator(3, nproc=nproc)
 
     def entropy(self, X):
         np.random.seed(0)
@@ -133,3 +133,22 @@ class KDEntropyEstimator(ItEstimator):
 
     def flags(self):
         return False, False, False
+
+class DiscreteEntropyEstimator(ItEstimator):
+    def __init__(self):
+        pass
+
+    def entropy(self, X):
+        np.random.seed(0)
+        return ee.entropyd(X.copy(order='C'))
+
+    def mi(self, X, Y):
+        np.random.seed(0)
+        return ee.mid(X.copy(order='C'), Y.copy(order='C'))
+
+    def cmi(self, X, Y, Z):
+        np.random.seed(0)
+        return ee.mid(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'))
+
+    def flags(self):
+        return True, False, True
