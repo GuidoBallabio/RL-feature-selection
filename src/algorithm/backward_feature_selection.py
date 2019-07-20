@@ -2,11 +2,11 @@ import numpy as np
 from tqdm.autonotebook import tqdm
 
 from src.algorithm.feature_selection import FeatureSelector
-
+from src.algorithm.utils import FakeFuture
 
 class BackwardFeatureSelector(FeatureSelector):
-    def __init__(self, itEstimator, trajectories, nproc=1):
-        super().__init__(itEstimator, trajectories, nproc)
+    def __init__(self, itEstimator, trajectories, discrete=False, nproc=1):
+        super().__init__(itEstimator, trajectories, discrete, nproc)
 
         self.idSelected = set(self.idSet)
 
@@ -31,7 +31,7 @@ class BackwardFeatureSelector(FeatureSelector):
 
         return self.idSelected.copy(), error
 
-    def try_remove_all(self, k, gamma, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
+    def try_remove_all(self, k, gamma, all_scores=False, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         for i in tqdm(range(self.n_features), disable=not show_progress):
@@ -42,7 +42,11 @@ class BackwardFeatureSelector(FeatureSelector):
             self.residual_error += scores[1][0]
             self.correction_term = scores[2][0]
             error = self.computeError(use_Rt=use_Rt)
-            yield self.idSelected.copy(), error
+            
+            if all_scores:
+                yield self.idSelected.copy(), error, scores
+            else:
+                yield self.idSelected.copy(), error
 
     def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
@@ -91,7 +95,11 @@ class BackwardFeatureSelector(FeatureSelector):
             for j, t in enumerate(steplist):
                 res.append(self.itEstimator.estimateCMI(
                     frozenset({self.id_reward}), id, S_no_i, t=t))
-            res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
+            
+            if self.discrete:
+                res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
+            else:
+                res.append(FakeFuture(4))
 
         res = map(lambda x: x.result(), tqdm(
             res, leave=False, disable=not show_progress))
@@ -121,7 +129,12 @@ class BackwardFeatureSelector(FeatureSelector):
             for j, t in enumerate(steplist):
                 score_mat[j, i] = self.itEstimator.estimateCMI(
                     frozenset({self.id_reward}), id, S_no_i, t=t)
-            score_mat[k, i] = self.itEstimator.estimateCH(no_S_i, S_no_i)
+            
+            if self.discrete:
+                score_mat[k, i] = self.itEstimator.estimateCH(no_S_i, S_no_i)
+            else: 
+                score_mat[k, i] = 4
+                
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
         new_cond_entropy = self.weights[-1] * score_mat[-1, :]

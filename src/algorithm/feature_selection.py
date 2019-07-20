@@ -4,13 +4,14 @@ import numpy as np
 
 from src.algorithm.info_theory.it_estimator import (CachingEstimator,
                                                     MPCachingEstimator)
-from src.algorithm.utils import independent_roll
+from src.algorithm.utils import independent_roll, FakeFuture
 
 
 class FeatureSelector(metaclass=abc.ABCMeta):
-    def __init__(self, itEstimator, trajectories, nproc=1):
+    def __init__(self, itEstimator, trajectories, discrete=False, nproc=1):
         self.trajectories = trajectories
         self.nproc = nproc
+        self.discrete = discrete
 
         if nproc != 1:
             self.itEstimator = MPCachingEstimator(
@@ -167,7 +168,11 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         for j, t in enumerate(steplist):
             score[j] = self.itEstimator.estimateCMI(
                 frozenset({self.id_reward}), no_S, S, t=t)
-        score[k] = self.itEstimator.estimateCH(no_S, S)
+
+        if self.discrete:
+            score[k] = self.itEstimator.estimateCH(no_S, S)
+        else:
+            score[k] = 4
 
         self.residual_error = score[:-1] @ self.weights[:-1]
         self.correction_term = score[-1] * self.weights[-1]
@@ -184,7 +189,11 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         for t in steplist:
             res.append(self.itEstimator.estimateCMI(
                 frozenset({self.id_reward}), no_S, S, t=t))
-        res.append(self.itEstimator.estimateCH(no_S, S))
+        
+        if self.discrete:
+            res.append(self.itEstimator.estimateCH(no_S, S))
+        else:
+            res.append(FakeFuture(4))
 
         res = map(lambda x: x.result(), res)
         score = np.fromiter(res, np.float64)

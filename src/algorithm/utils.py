@@ -75,3 +75,10 @@ def episodes_with_len(wenv, num_ep, len_ep, policy=None, stop_at_len=True):
         if len(ep[2]) >= len_ep:
             l.append(np.hstack(ep))
     return l
+
+class FakeFuture:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def result(self):
+        return self.obj
