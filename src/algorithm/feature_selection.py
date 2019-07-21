@@ -4,7 +4,7 @@ import numpy as np
 
 from src.algorithm.info_theory.it_estimator import (CachingEstimator,
                                                     MPCachingEstimator)
-from src.algorithm.utils import independent_roll, FakeFuture
+from src.algorithm.utils import FakeFuture, independent_roll
 
 
 class FeatureSelector(metaclass=abc.ABCMeta):
@@ -189,7 +189,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         for t in steplist:
             res.append(self.itEstimator.estimateCMI(
                 frozenset({self.id_reward}), no_S, S, t=t))
-        
+
         if self.discrete:
             res.append(self.itEstimator.estimateCH(no_S, S))
         else:

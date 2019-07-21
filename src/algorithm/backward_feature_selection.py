@@ -4,6 +4,7 @@ from tqdm.autonotebook import tqdm
 from src.algorithm.feature_selection import FeatureSelector
 from src.algorithm.utils import FakeFuture
 
+
 class BackwardFeatureSelector(FeatureSelector):
     def __init__(self, itEstimator, trajectories, discrete=False, nproc=1):
         super().__init__(itEstimator, trajectories, discrete, nproc)
@@ -42,7 +43,7 @@ class BackwardFeatureSelector(FeatureSelector):
             self.residual_error += scores[1][0]
             self.correction_term = scores[2][0]
             error = self.computeError(use_Rt=use_Rt)
-            
+
             if all_scores:
                 yield self.idSelected.copy(), error, scores
             else:
@@ -95,7 +96,7 @@ class BackwardFeatureSelector(FeatureSelector):
             for j, t in enumerate(steplist):
                 res.append(self.itEstimator.estimateCMI(
                     frozenset({self.id_reward}), id, S_no_i, t=t))
-            
+
             if self.discrete:
                 res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
             else:
@@ -129,12 +130,11 @@ class BackwardFeatureSelector(FeatureSelector):
             for j, t in enumerate(steplist):
                 score_mat[j, i] = self.itEstimator.estimateCMI(
                     frozenset({self.id_reward}), id, S_no_i, t=t)
-            
+
             if self.discrete:
                 score_mat[k, i] = self.itEstimator.estimateCH(no_S_i, S_no_i)
-            else: 
+            else:
                 score_mat[k, i] = 4
-                
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
         new_cond_entropy = self.weights[-1] * score_mat[-1, :]

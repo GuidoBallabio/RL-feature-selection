@@ -134,6 +134,7 @@ class KDEntropyEstimator(ItEstimator):
     def flags(self):
         return False, False, False
 
+
 class DiscreteEntropyEstimator(ItEstimator):
     def __init__(self):
         pass
@@ -144,11 +145,11 @@ class DiscreteEntropyEstimator(ItEstimator):
 
     def mi(self, X, Y):
         np.random.seed(0)
-        return ee.mid(X.copy(order='C'), Y.copy(order='C'))
+        return ee.midd(X.copy(order='C'), Y.copy(order='C'))
 
     def cmi(self, X, Y, Z):
         np.random.seed(0)
-        return ee.mid(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'))
+        return ee.cmidd(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'))
 
     def flags(self):
         return True, False, True
