@@ -13,7 +13,7 @@ class QfunctionAsSum():
         self.predictors = []
         self.weights = None
 
-    def fit(self, trajectories, features_to_consider=None, iter_max=50):
+    def fit(self, trajectories, features_to_consider=None, iter_max=50, show_progress=False):
         if features_to_consider is None:
             features_to_consider = list(range(trajectories[0].shape[1]-1))
 
@@ -24,7 +24,7 @@ class QfunctionAsSum():
         data = np.dstack([t[:self.min_len, features_to_consider + [-1]]
                           for t in trajectories]).transpose(2, 0, 1)
 
-        for i in range(self.min_len):
+        for i in tqdm(range(self.min_len), disable=not show_progress):
             regr = self.regressor(n_estimators=50, **self.regr_kwargs)
             regr.fit(data[:, 0, :-1], data[:, i, -1])
             self.predictors.append(regr)
@@ -47,9 +47,11 @@ class QfunctionAsSumDmu():
         self.predictors = []
         self.weights = None
 
-    def fit(self, trajectories, features_to_consider=None, iter_max=50):
+    def fit(self, trajectories, features_to_consider=None, iter_max=50, show_progress=False):
         if features_to_consider is None:
             features_to_consider = list(range(trajectories[0].shape[1]-1))
+
+        self.features_to_consider = features_to_consider
 
         n = len(features_to_consider)
         self.min_len = min([len(t) for t in trajectories])
@@ -71,7 +73,7 @@ class QfunctionAsSumDmu():
 
             self.t_step_data.append(np.vstack(t_step_eps))
 
-        for i in range(self.min_len):
+        for i in tqdm(range(self.min_len), disable=not show_progress):
             regr = self.regressor(n_estimators=50, **self.regr_kwargs)
             regr.fit(self.t_step_data[i][:, :-1], self.t_step_data[i][:, -1])
             self.predictors.append(regr)

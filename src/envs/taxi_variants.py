@@ -16,3 +16,20 @@ class TaxiUnraveled(TaxiEnv):
         res = super().reset(*args, **kwargs)
         obs = self.decode(res)
         return obs
+
+
+class TaxiBinary(TaxiEnv):
+    def decode(self, obs):
+        bin_obs = np.zeros(500)
+        bin_obs[obs] = 1
+        return bin_obs
+
+    def step(self, *args, **kwargs):
+        res = super().step(*args, **kwargs)
+        obs = self.decode(res[0])
+        return (obs,) + res[1:]
+
+    def reset(self, *args, **kwargs):
+        res = super().reset(*args, **kwargs)
+        obs = self.decode(res)
+        return obs
