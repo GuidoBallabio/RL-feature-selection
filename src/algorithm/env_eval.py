@@ -22,7 +22,7 @@ class EnvEval:
         self.subsets = {}
         self.mean_return = None
 
-    def fit_baseline(self, k, gamma, n_trajectories, policy=None, iter_max=50, **kwargs):
+    def fit_baseline(self, k, gamma, n_trajectories, policy=None, iter_max=50, est_kwargs={}, fs_kwargs={}):
         """To be called before other methods as a reset.
 
             **kwargs are passed to selectNFeatures
@@ -32,7 +32,8 @@ class EnvEval:
         self.n_trajectories = n_trajectories
         self.policy = policy
         self.iter_max = iter_max
-        self.kwargs = kwargs
+        self.est_kwargs = est_kwargs
+        self.fs_kwargs = fs_kwargs
 
         self.fs = None
         self.subsets = {}
@@ -55,10 +56,10 @@ class EnvEval:
                 self.mean_return = np.mean(
                     [np.polyval(t[:, -1], self.gamma) for t in self.trajectories])
             return (lambda x: self.mean_return)
-        return self.estimatorQ(self.gamma).fit(self.trajectories, S, iter_max=self.iter_max)
+        return self.estimatorQ(self.gamma).fit(self.trajectories, S, iter_max=self.iter_max, **self.est_kwargs)
 
     def try_all(self):
-        for S, err in self.fs.try_remove_all(self.k, self.gamma, **self.kwargs):
+        for S, err in self.fs.try_remove_all(self.k, self.gamma, **self.fs_kwargs):
             Q = self._fitQ(S)
             self.subsets.update({frozenset(S): (err, Q)})
 
@@ -88,7 +89,8 @@ class EnvEval:
 
         return res
 
-    def run(self, k, gamma, n_trajectories, policy=None, iter_max=50, **kwargs):
-        self.fit_baseline(k, gamma, n_trajectories, **kwargs)
+    def run(self, k, gamma, n_trajectories, policy=None, iter_max=50, est_kwargs={}, **fs_kwargs):
+        self.fit_baseline(k, gamma, n_trajectories,
+                          est_kwargs=est_kwargs, fs_kwargs=fs_kwargs)
         self.try_all()
         return self.norm_diff()

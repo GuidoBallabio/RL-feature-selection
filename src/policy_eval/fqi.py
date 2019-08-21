@@ -16,7 +16,7 @@ class QfunctionFQI():
 
         return db
 
-    def fit(self, trajectories, features_to_consider=None, iter_max=50, show_progress=False):
+    def fit(self, trajectories, features_to_consider=None, iter_max=50, show_progress=True, leave=False):
         if features_to_consider is None:
             features_to_consider = range(trajectories[0].shape[1]-1)
 
@@ -35,7 +35,7 @@ class QfunctionFQI():
 
         self.regressor.fit(sa, r)
 
-        for _ in tqdm(range(iter_max), disable=not show_progress):
+        for _ in tqdm(range(iter_max), leave=leave, disable=not show_progress):
             nextY = r + self.gamma * self.regressor.predict(sa_next)
             self.regressor.fit(sa, nextY)
 

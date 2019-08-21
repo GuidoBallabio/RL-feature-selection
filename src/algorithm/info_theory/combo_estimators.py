@@ -18,11 +18,13 @@ class NpeetEstimator(ItEstimator):
 
     def mi(self, X, Y):
         np.random.seed(0)
-        return ee.mi(X.copy(order='C'), Y.copy(order='C'))
+        r = ee.mi(X.copy(order='C'), Y.copy(order='C'))
+        return r if r >= 0 else 0
 
     def cmi(self, X, Y, Z):
         np.random.seed(0)
-        return ee.mi(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'))
+        r = ee.mi(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'))
+        return r if r >= 0 else 0
 
     def flags(self):
         return True, False, True

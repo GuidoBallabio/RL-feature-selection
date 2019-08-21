@@ -25,6 +25,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
     def _setup(self):
         self.n_features = self.trajectories[0].shape[1] - 1
         self.id_reward = self.n_features
+        self.set_reward = frozenset({self.id_reward})
         self.idSet = frozenset(list(range(self.n_features)))
 
         # sqrt of max of square of absolute value max
@@ -167,7 +168,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         for j, t in enumerate(steplist):
             score[j] = self.itEstimator.estimateCMI(
-                frozenset({self.id_reward}), no_S, S, t=t)
+                self.set_reward, no_S, S, t=t)
 
         if self.discrete:
             score[k] = self.itEstimator.estimateCH(no_S, S)
@@ -188,7 +189,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         res = []
         for t in steplist:
             res.append(self.itEstimator.estimateCMI(
-                frozenset({self.id_reward}), no_S, S, t=t))
+                self.set_reward, no_S, S, t=t))
 
         if self.discrete:
             res.append(self.itEstimator.estimateCH(no_S, S))
