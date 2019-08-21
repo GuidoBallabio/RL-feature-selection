@@ -21,6 +21,9 @@ class BackwardFeatureSelector(FeatureSelector):
 
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
+        if sum_cmi:
+            self.scores = np.zeros(k)
+
         for i in tqdm(range(self.n_features - n), disable=not show_progress):
             scores = self.scoreFeatures(
                 steplist, gamma, sum_cmi, show_progress=show_progress)
@@ -28,7 +31,8 @@ class BackwardFeatureSelector(FeatureSelector):
             self.idSelected.remove(scores[0][0])
 
             if sum_cmi:
-                self.residual_error += scores[1][0]
+                self.scores += scores[3][:-1, 0]
+                self.residual_error = np.sqrt(self.scores) @ self.weights[:-1]
             else:
                 self.residual_error = scores[1][0]
             self.correction_term = scores[2][0]
@@ -41,6 +45,8 @@ class BackwardFeatureSelector(FeatureSelector):
 
         if max_n is None:
             max_n = self.n_features
+        if sum_cmi:
+            self.scores = np.zeros(k)
 
         for i in tqdm(range(max_n), disable=not show_progress):
             scores = self.scoreFeatures(
@@ -49,7 +55,8 @@ class BackwardFeatureSelector(FeatureSelector):
             self.idSelected.remove(scores[0][0])
 
             if sum_cmi:
-                self.residual_error += scores[1][0]
+                self.scores += scores[3][:-1, 0]
+                self.residual_error = np.sqrt(self.scores) @ self.weights[:-1]
             else:
                 self.residual_error = scores[1][0]
             self.correction_term = scores[2][0]
@@ -64,6 +71,8 @@ class BackwardFeatureSelector(FeatureSelector):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         error = 0.0
+        if sum_cmi:
+            self.scores = np.zeros(k)
 
         with tqdm(total=100, disable=not show_progress) as pbar:  # tqdm
             while error <= max_error and len(self.idSelected) > 1:
@@ -71,7 +80,8 @@ class BackwardFeatureSelector(FeatureSelector):
                     steplist, gamma, sum_cmi, show_progress=show_progress)
 
                 if sum_cmi:
-                    new_cmi_term = self.residual_error + scores[1][0]
+                    self.scores += scores[3][:-1, 0]
+                    new_cmi_term = np.sqrt(self.scores) @ self.weights[:-1]
                 else:
                     new_cmi_term = scores[1][0]
                 new_corr_term = scores[2][0]
@@ -119,14 +129,16 @@ class BackwardFeatureSelector(FeatureSelector):
             if self.discrete:
                 res.append(self.itEstimator.estimateCH(no_S_i, S_no_i))
             else:
-                res.append(FakeFuture(4))
+                res.append(FakeFuture(2))
 
         res = map(lambda x: x.result(), tqdm(
             res, leave=False, disable=not show_progress))
         score_mat = np.fromiter(res, np.float64).reshape(k + 1, -1, order='F')
 
-        cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
-        new_cond_entropy = self.weights[-1] * score_mat[-1, :]
+        scores = np.sqrt(score_mat)
+
+        cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], scores[:-1, :])
+        new_cond_entropy = self.weights[-1] * scores[-1, :]
 
         sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
 
@@ -158,10 +170,12 @@ class BackwardFeatureSelector(FeatureSelector):
             if self.discrete:
                 score_mat[k, i] = self.itEstimator.estimateCH(no_S_i, S_no_i)
             else:
-                score_mat[k, i] = 4
+                score_mat[k, i] = 2
 
-        cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], score_mat[:-1, :])
-        new_cond_entropy = self.weights[-1] * score_mat[-1, :]
+        scores = np.sqrt(score_mat)
+
+        cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], scores[:-1, :])
+        new_cond_entropy = self.weights[-1] * scores[-1, :]
 
         sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
 

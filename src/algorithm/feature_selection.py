@@ -99,7 +99,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
     def _get_weights_by_steplist(self, steplist, gamma, use_Rt):
         k = len(steplist)
-        gamma = gamma**2
+        gamma = gamma
 
         weights = np.ones(k + 1) * gamma
         weights[:-1] = weights[:-1] ** steplist
@@ -108,10 +108,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         if use_Rt:
             Rts = np.abs(self.data_per_traj[:, self.id_reward, :]).max(axis=1)
-            Rts = Rts[steplist] ** 2
+            Rts = Rts[steplist]
 
             weights[:-1] *= Rts
-            weights[k] *= self.Rmax ** 2
+            weights[k] *= self.Rmax
 
         return weights
 
@@ -146,7 +146,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         else:
             Rmax = self.Rmax
 
-        return 2**(1/2) * Rmax * np.sqrt(residual + correction)
+        return 2**(1/2) * Rmax * (residual + correction)
 
     def reset(self):
         self.residual_error = 0
@@ -173,7 +173,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         if self.discrete:
             score[k] = self.itEstimator.estimateCH(no_S, S)
         else:
-            score[k] = 4
+            score[k] = 2
+
+        score = np.sqrt(score)
 
         self.residual_error = score[:-1] @ self.weights[:-1]
         self.correction_term = score[-1] * self.weights[-1]
@@ -194,10 +196,12 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         if self.discrete:
             res.append(self.itEstimator.estimateCH(no_S, S))
         else:
-            res.append(FakeFuture(4))
+            res.append(FakeFuture(2))
 
         res = map(lambda x: x.result(), res)
         score = np.fromiter(res, np.float64)
+
+        score = np.sqrt(score)
 
         self.residual_error = score[:-1] @ self.weights[:-1]
         self.correction_term = score[-1] * self.weights[-1]

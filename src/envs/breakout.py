@@ -1,9 +1,9 @@
-import numpy as np
-import gym
-from gym import Wrapper
-import cv2
 from collections import deque
 
+import cv2
+import gym
+import numpy as np
+from gym import Wrapper
 
 class GrayRaveler(Wrapper):
     def __init__(self, env):
