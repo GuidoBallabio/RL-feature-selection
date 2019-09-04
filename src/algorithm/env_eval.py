@@ -90,7 +90,7 @@ class EnvEval:
         return res
 
     def run(self, k, gamma, n_trajectories, policy=None, iter_max=50, est_kwargs={}, **fs_kwargs):
-        self.fit_baseline(k, gamma, n_trajectories,
+        self.fit_baseline(k, gamma, n_trajectories, policy=policy, iter_max=iter_max,
                           est_kwargs=est_kwargs, fs_kwargs=fs_kwargs)
         self.try_all()
         return self.norm_diff()

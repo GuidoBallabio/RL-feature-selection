@@ -126,6 +126,8 @@ def discrete_space_size(space):
             dims += discrete_space_size(s)
     elif isinstance(space, spaces.MultiDiscrete):
         dims += space.nvec.tolist()
+    elif isinstance(space, spaces.Box):
+        dims += space.shape + (space.high.flat[0] - space.low.flat[0],)
     else:
         dims += [space.n]
 

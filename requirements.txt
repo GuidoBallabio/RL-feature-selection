@@ -13,6 +13,7 @@ scipy
 sklearn
 cachetools
 tqdm
+opencv-python
 
 ## entropy
 git+https://github.com/gregversteeg/NPEET.git

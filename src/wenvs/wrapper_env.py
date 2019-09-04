@@ -221,6 +221,9 @@ class WrapperEnv(Wrapper):
 
         ss, acts, rs = [], [], []
         obs = self.reset()
+        if hasattr(policy, 'reset'):
+            policy.reset(obs)
+
         for _ in range(iterMax):
             ss.append(obs)
             render_it()
