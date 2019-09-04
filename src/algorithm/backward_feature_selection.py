@@ -36,10 +36,13 @@ class BackwardFeatureSelector(FeatureSelector):
 
         return self.idSelected.copy(), error
 
-    def try_remove_all(self, k, gamma, all_scores=False, sampling="frequency", freq=1, use_Rt=True, on_mu=True, sum_cmi=True, show_progress=True):
+    def try_remove_all(self, k, gamma, all_scores=False, max_n=None, sampling="frequency", freq=1, use_Rt=True, on_mu=True, sum_cmi=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
-        for i in tqdm(range(self.n_features), disable=not show_progress):
+        if max_n is None:
+            max_n = self.n_features
+
+        for i in tqdm(range(max_n), disable=not show_progress):
             scores = self.scoreFeatures(
                 steplist, gamma, sum_cmi, show_progress=show_progress)
 
