@@ -5,6 +5,7 @@ import gym
 import numpy as np
 from gym import Wrapper
 
+
 class GrayRaveler(Wrapper):
     def __init__(self, env):
         super().__init__(env)

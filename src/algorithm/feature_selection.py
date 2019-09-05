@@ -28,18 +28,15 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.set_reward = frozenset({self.id_reward})
         self.idSet = frozenset(list(range(self.n_features)))
 
-        # sqrt of max of square of absolute value max
-        self.Rmax = np.max([np.max(np.abs(tr[:, self.id_reward])) ** 2
-                            for tr in self.trajectories]) ** (1/2)
-
         self.tot_t = min(len(tr) for tr in self.trajectories)
-
         self.data_per_traj = np.dstack(
             [tr[:self.tot_t, :] for tr in self.trajectories])
-        self.on_mu = None
 
-        self.residual_error = 0
-        self.correction_term = 0
+        self.Rts = np.abs(self.data_per_traj[:, self.id_reward, :]).max(axis=1)
+        self.Rmax = self.Rts.max()
+
+        self.on_mu = None
+        self.trajectories = None
 
     def _prep_data(self, max_t, on_mu):
         if hasattr(self, 't_step_data') and max_t + 1 == self.t_step_data.shape[2] and on_mu == self.on_mu:
@@ -52,8 +49,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.on_mu = on_mu
         if on_mu:
             stop_len = 1
+            stop_ids = -1
         else:
             stop_len = self.tot_t - max_t
+            stop_ids = slice(None)
 
         shift = np.zeros(self.n_features + 1, dtype=np.int)
         shift[self.id_reward] = -1
@@ -62,9 +61,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         for t in range(max_t + 1):
             t_shift = t*shift
             t_step_eps = []
-            for ep in self.trajectories:
+            for ep in self.data_per_traj.transpose(2, 0, 1):
                 t_step_eps.append(independent_roll(
-                    ep, t_shift)[: stop_len, :])
+                    ep, t_shift)[: stop_len, stop_ids])
 
             self.t_step_data.append(np.vstack(t_step_eps))
 
@@ -73,6 +72,13 @@ class FeatureSelector(metaclass=abc.ABCMeta):
     def _get_arrays(self, ids, t):
         if not isinstance(ids, list):
             ids = list(ids)
+
+        # memory efficiency
+        if self.on_mu:
+            feats = self.data_per_traj[0, :-1, :].T
+            rew = self.t_step_data[:, 0, t][:, None]
+            data = np.hstack([feats, rew])
+            return data[:, ids]
 
         return self.t_step_data[:, ids, t]
 
@@ -107,11 +113,12 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         weights[k] = 1/(1 - gamma) - weights[:-1].sum()
 
         if use_Rt:
-            Rts = np.abs(self.data_per_traj[:, self.id_reward, :]).max(axis=1)
-            Rts = Rts[steplist]
+            Rsteps = self.Rts[steplist]
+            weights[:-1] *= Rsteps
 
-            weights[:-1] *= Rts
-            weights[k] *= self.Rmax
+            mask = np.ones_like(self.Rts, dtype=np.bool)
+            mask[steplist] = False
+            weights[k] *= self.Rts[mask].max() if mask.any() else self.Rmax
 
         return weights
 

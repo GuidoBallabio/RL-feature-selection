@@ -22,7 +22,7 @@ class EnvEval:
         self.subsets = {}
         self.mean_return = None
 
-    def fit_baseline(self, k, gamma, n_trajectories, policy=None, iter_max=50, est_kwargs={}, fs_kwargs={}):
+    def fit_baseline(self, k, gamma, n_trajectories, policy=None, iter_max=50, stop_at_len=True, est_kwargs={}, fs_kwargs={}):
         """To be called before other methods as a reset.
 
             **kwargs are passed to selectNFeatures
@@ -41,7 +41,7 @@ class EnvEval:
         np.random.seed(0)
         self.wenv.seed(0)
         self.trajectories = episodes_with_len(
-            self.wenv, n_trajectories, k, policy=policy)
+            self.wenv, n_trajectories, k, policy=policy, stop_at_len=stop_at_len)
 
         est = self.itEstimator()
         self.fs = BackwardFeatureSelector(est, self.trajectories,
@@ -74,7 +74,7 @@ class EnvEval:
             return [0]
 
         _, baseQ = self.subsets[self.fs.idSet]
-        self.mu = self.fs.t_step_data[:, :-1, 0]
+        self.mu = self.fs.data_per_traj[0, :-1, :].T
         baseQ = baseQ(self.mu)
 
         res = []
@@ -89,8 +89,8 @@ class EnvEval:
 
         return res
 
-    def run(self, k, gamma, n_trajectories, policy=None, iter_max=50, est_kwargs={}, **fs_kwargs):
-        self.fit_baseline(k, gamma, n_trajectories, policy=policy, iter_max=iter_max,
+    def run(self, k, gamma, n_trajectories, policy=None, iter_max=50, stop_at_len=True, est_kwargs={}, **fs_kwargs):
+        self.fit_baseline(k, gamma, n_trajectories, policy=policy, iter_max=iter_max, stop_at_len=stop_at_len,
                           est_kwargs=est_kwargs, fs_kwargs=fs_kwargs)
         self.try_all()
         return self.norm_diff()
