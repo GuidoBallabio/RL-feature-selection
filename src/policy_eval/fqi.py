@@ -16,7 +16,7 @@ class QfunctionFQI():
 
         return db
 
-    def fit(self, trajectories, features_to_consider=None, iter_max=50, show_progress=True, leave=False):
+    def fit(self, trajectories, features_to_consider=None, iter_max=50, show_progress=False, leave=False):
         if features_to_consider is None:
             features_to_consider = range(trajectories[0].shape[1]-1)
 

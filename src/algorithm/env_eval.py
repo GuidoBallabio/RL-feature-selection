@@ -1,8 +1,12 @@
+from concurrent.futures import ProcessPoolExecutor
+from tqdm.autonotebook import tqdm
+
 import numpy as np
 
 from src.algorithm.backward_feature_selection import BackwardFeatureSelector
 from src.algorithm.utils import episodes_with_len
 from src.wenvs import WrapperEnv
+from src.algorithm.utils import FakeFuture
 
 
 class EnvEval:
@@ -21,6 +25,9 @@ class EnvEval:
         self.fs = None
         self.subsets = {}
         self.mean_return = None
+
+        if self.nproc != 1:
+            self.proc_pool = ProcessPoolExecutor(max_workers=nproc)
 
     def fit_baseline(self, k, gamma, n_trajectories, policy=None, iter_max=50, stop_at_len=True, est_kwargs={}, fs_kwargs={}):
         """To be called before other methods as a reset.
@@ -58,10 +65,34 @@ class EnvEval:
             return (lambda x: self.mean_return)
         return self.estimatorQ(self.gamma).fit(self.trajectories, S, iter_max=self.iter_max, **self.est_kwargs)
 
-    def try_all(self):
+    def _fitQ_parallel(self, S):
+        if S is not None and not S:
+            if not self.mean_return:
+                self.mean_return = np.mean(
+                    [np.polyval(t[:, -1], self.gamma) for t in self.trajectories])
+            return FakeFuture(lambda x: self.mean_return)
+        Q = self.estimatorQ(self.gamma)
+        return self.proc_pool.submit(Q.fit, self.trajectories, S, iter_max=self.iter_max, **self.est_kwargs)
+
+    def _sequential_try_all(self):
         for S, err in self.fs.try_remove_all(self.k, self.gamma, **self.fs_kwargs):
             Q = self._fitQ(S)
             self.subsets.update({frozenset(S): (err, Q)})
+
+    def _parallel_try_all(self):
+        res = []
+        for S, err in self.fs.try_all(self.k, self.gamma, **self.fs_kwargs):
+            Q = self._fitQ_parallel(S)
+            res.append((frozenset(S), err, Q))
+
+        for e in tqdm(res, disable=not self.fs_kwargs.get('show_progress', True)):
+            self.subsets.update({e[0]: (e[1], e[2].result())})
+
+    def try_all(self):
+        if self.nproc != 1:
+            self._parallel_try_all()
+        else:
+            self._sequential_try_all()
 
     def try_subset(self, S):
         err = self.fs.scoreSubset(self.k, self.gamma, S)

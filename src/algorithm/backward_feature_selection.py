@@ -40,7 +40,7 @@ class BackwardFeatureSelector(FeatureSelector):
 
         return self.idSelected.copy(), error
 
-    def try_remove_all(self, k, gamma, all_scores=False, max_n=None, sampling="frequency", freq=1, use_Rt=True, on_mu=True, sum_cmi=True, show_progress=True):
+    def try_all(self, k, gamma, all_scores=False, max_n=None, sampling="frequency", freq=1, use_Rt=True, on_mu=True, sum_cmi=True, show_progress=True):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         if max_n is None:
