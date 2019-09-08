@@ -1,16 +1,16 @@
 from concurrent.futures import ProcessPoolExecutor
-from tqdm.autonotebook import tqdm
 
 import numpy as np
+from tqdm.autonotebook import tqdm
 
 from src.algorithm.backward_feature_selection import BackwardFeatureSelector
-from src.algorithm.utils import episodes_with_len
+from src.algorithm.forward_feature_selection import ForwardFeatureSelector
+from src.algorithm.utils import FakeFuture, episodes_with_len
 from src.wenvs import WrapperEnv
-from src.algorithm.utils import FakeFuture
 
 
 class EnvEval:
-    def __init__(self, env, itEstimator, estimatorQ, continuous_state=False, continuous_actions=False, nproc=None):
+    def __init__(self, env, itEstimator, estimatorQ, continuous_state=False, continuous_actions=False, nproc=None, backward=True):
         self.env = env
         self.wenv = WrapperEnv(env, continuous_state=continuous_state,
                                continuous_actions=continuous_actions)
@@ -19,6 +19,7 @@ class EnvEval:
         self.continuous_state = continuous_state
         self.continuous_actions = continuous_actions
         self.nproc = nproc
+        self.backward = backward
 
         self.discrete = not (continuous_actions or continuous_state)
         self.trajectories = None
@@ -51,11 +52,17 @@ class EnvEval:
             self.wenv, n_trajectories, k, policy=policy, stop_at_len=stop_at_len)
 
         est = self.itEstimator()
-        self.fs = BackwardFeatureSelector(est, self.trajectories,
-                                          discrete=self.discrete, nproc=self.nproc)
 
+        if self.backward:
+            self.fs = BackwardFeatureSelector(est, self.trajectories,
+                                              discrete=self.discrete, nproc=self.nproc)
+        else:
+            self.fs = ForwardFeatureSelector(est, self.trajectories,
+                                             discrete=self.discrete, nproc=self.nproc)
+
+        err = self.fs.scoreSubset(self.k, self.gamma, self.fs.idSet)
         Q = self._fitQ(None)
-        self.subsets.update({self.fs.idSet: (0.0, Q)})
+        self.subsets.update({self.fs.idSet: (err, Q)})
 
     def _fitQ(self, S):
         if S is not None and not S:

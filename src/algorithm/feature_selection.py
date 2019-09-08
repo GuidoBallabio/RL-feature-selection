@@ -1,6 +1,7 @@
 import abc
 
 import numpy as np
+from tqdm.autonotebook import tqdm
 
 from src.algorithm.info_theory.it_estimator import (CachingEstimator,
                                                     MPCachingEstimator)
@@ -8,7 +9,7 @@ from src.algorithm.utils import FakeFuture, independent_roll
 
 
 class FeatureSelector(metaclass=abc.ABCMeta):
-    def __init__(self, itEstimator, trajectories, discrete=False, nproc=1):
+    def __init__(self, itEstimator, trajectories, discrete=False, nproc=None):
         self.trajectories = trajectories
         self.nproc = nproc
         self.discrete = discrete
@@ -27,6 +28,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.id_reward = self.n_features
         self.set_reward = frozenset({self.id_reward})
         self.idSet = frozenset(list(range(self.n_features)))
+        self.idSelected = None
 
         self.tot_t = min(len(tr) for tr in self.trajectories)
         self.data_per_traj = np.dstack(
@@ -160,6 +162,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.correction_term = 0
         self.weights = None
         self.steplist = None
+        self.idSelected = None
 
     def seed(self, seed=None):
         self.np_random = np.random.seed(seed)
@@ -215,10 +218,110 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         return self.computeError(use_Rt=use_Rt)
 
+    def _scoreFeatureParallel(self, steplist, gamma, sum_cmi, show_progress):
+        k = len(steplist)
+
+        S = frozenset(self.idSelected)
+        no_S = self.idSet.difference(self.idSelected)
+
+        if self.forward:
+            modS = no_S
+        else:
+            modS = S
+
+        list_ids = np.fromiter(modS, dtype=np.int)
+
+        res = []
+        for i, id in enumerate(list_ids):
+            id = frozenset({id})
+            if self.forward:
+                S_next = S.union(id)
+                no_S_next = no_S.difference(id)
+            else:
+                S_next = S.difference(id)
+                no_S_next = no_S.union(id)
+
+            if sum_cmi:
+                target = id
+            else:
+                target = no_S_next
+
+            for j, t in enumerate(steplist):
+                res.append(self.itEstimator.estimateCMI(
+                    self.set_reward, target, S_next, t=t))
+
+            if self.discrete:
+                res.append(self.itEstimator.estimateCH(no_S_next, S_next))
+            else:
+                res.append(FakeFuture(2))
+
+        res = map(lambda x: x.result(), tqdm(
+            res, leave=False, disable=not show_progress))
+        score_mat = np.fromiter(res, np.float64).reshape(k + 1, -1, order='F')
+
+        scores = np.sqrt(score_mat)
+
+        cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], scores[:-1, :])
+        new_cond_entropy = self.weights[-1] * scores[-1, :]
+
+        sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
+
+        return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx], score_mat[:, sorted_idx]
+
+    def _scoreFeatureSequential(self, steplist, gamma, sum_cmi, show_progress):
+        k = len(steplist)
+
+        S = frozenset(self.idSelected)
+        no_S = self.idSet.difference(self.idSelected)
+
+        if self.forward:
+            modS = no_S
+        else:
+            modS = S
+
+        list_ids = np.fromiter(modS, dtype=np.int)
+        score_mat = np.zeros((k+1, len(list_ids)))
+
+        for i, id in enumerate(tqdm(list_ids, leave=False, disable=not show_progress)):
+            id = frozenset({id})
+            if self.forward:
+                S_next = S.union(id)
+                no_S_next = no_S.difference(id)
+            else:
+                S_next = S.difference(id)
+                no_S_next = no_S.union(id)
+
+            if sum_cmi:
+                target = id
+            else:
+                target = no_S_next
+
+            for j, t in enumerate(steplist):
+                score_mat[j, i] = self.itEstimator.estimateCMI(
+                    self.set_reward, target, S_next, t=t)
+
+            if self.discrete:
+                score_mat[k, i] = self.itEstimator.estimateCH(no_S_next, S_next)
+            else:
+                score_mat[k, i] = 2
+
+        scores = np.sqrt(score_mat)
+
+        cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], scores[:-1, :])
+        new_cond_entropy = self.weights[-1] * scores[-1, :]
+
+        sorted_idx = np.argsort(cmi_wsum + new_cond_entropy)
+
+        return list_ids[sorted_idx], cmi_wsum[sorted_idx],  new_cond_entropy[sorted_idx], score_mat[:, sorted_idx]
+
     @abc.abstractmethod
-    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
+    def selectOnError(self, k, gamma, max_error, sampling="frequency", freq=1, use_Rt=True, on_mu=True, sum_cmi=True, show_progress=True):
         pass
 
     @abc.abstractmethod
-    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, use_Rt=True, on_mu=True, show_progress=True):
+    def selectNfeatures(self, n, k, gamma, sampling="frequency", freq=1, use_Rt=True, on_mu=True, sum_cmi=True, show_progress=True):
+        pass
+
+    @abc.abstractmethod
+    def try_all(self, k, gamma, all_scores=False, max_n=None, sampling="frequency", freq=1, use_Rt=True, on_mu=True, sum_cmi=True, show_progress=True):
         pass
