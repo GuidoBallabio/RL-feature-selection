@@ -1,4 +1,5 @@
 import functools
+import pickle
 
 import numpy as np
 
@@ -81,6 +82,23 @@ def union(a, b):
 
 def differ(a, b):
     return a.difference(b)
+
+
+def dump_list_to_file(ls, filename):
+    with open(filename, 'ab+') as fp:
+        for x in ls:
+            pickle.dump(x, fp)
+
+
+def load_list_from_file(filename):
+    data = []
+    with open(filename, 'rb') as fp:
+        try:
+            while True:
+                data.append(pickle.load(fp))
+        except EOFError:
+            pass
+    return data
 
 
 class FakeFuture:

@@ -2,6 +2,7 @@
 gym
 gym[classic_control]
 gym[box2d]
+gym[atari]
 
 ## algorithms
 stable_baselines
