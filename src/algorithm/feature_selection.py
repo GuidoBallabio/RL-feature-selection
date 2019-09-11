@@ -5,7 +5,7 @@ from tqdm.autonotebook import tqdm
 
 from src.algorithm.info_theory.it_estimator import (CachingEstimator,
                                                     MPCachingEstimator)
-from src.algorithm.utils import FakeFuture, independent_roll
+from src.algorithm.utils import FakeFuture, independent_roll, union, differ
 
 
 class FeatureSelector(metaclass=abc.ABCMeta):
@@ -225,21 +225,19 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         no_S = self.idSet.difference(self.idSelected)
 
         if self.forward:
-            modS = no_S
+            shrink_S = no_S
+            op_S, op_noS = union, differ
         else:
-            modS = S
+            shrink_S = S
+            op_S, op_noS = differ, union
 
-        list_ids = np.fromiter(modS, dtype=np.int)
+        list_ids = np.fromiter(shrink_S, dtype=np.int)
 
         res = []
         for i, id in enumerate(list_ids):
             id = frozenset({id})
-            if self.forward:
-                S_next = S.union(id)
-                no_S_next = no_S.difference(id)
-            else:
-                S_next = S.difference(id)
-                no_S_next = no_S.union(id)
+            S_next = op_S(S, id)
+            no_S_next = op_noS(no_S, id)
 
             if sum_cmi:
                 target = id
@@ -275,21 +273,19 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         no_S = self.idSet.difference(self.idSelected)
 
         if self.forward:
-            modS = no_S
+            shrink_S = no_S
+            op_S, op_noS = union, differ
         else:
-            modS = S
+            shrink_S = S
+            op_S, op_noS = differ, union
 
-        list_ids = np.fromiter(modS, dtype=np.int)
+        list_ids = np.fromiter(shrink_S, dtype=np.int)
         score_mat = np.zeros((k+1, len(list_ids)))
 
         for i, id in enumerate(tqdm(list_ids, leave=False, disable=not show_progress)):
             id = frozenset({id})
-            if self.forward:
-                S_next = S.union(id)
-                no_S_next = no_S.difference(id)
-            else:
-                S_next = S.difference(id)
-                no_S_next = no_S.union(id)
+            S_next = op_S(S, id)
+            no_S_next = op_noS(no_S, id)
 
             if sum_cmi:
                 target = id
