@@ -1,11 +1,10 @@
-from concurrent.futures import ProcessPoolExecutor
-
 import numpy as np
+import ray
 from tqdm.autonotebook import tqdm
 
 from src.algorithm.backward_feature_selection import BackwardFeatureSelector
 from src.algorithm.forward_feature_selection import ForwardFeatureSelector
-from src.algorithm.utils import FakeFuture, episodes_with_len
+from src.algorithm.utils import episodes_with_len
 from src.wenvs import WrapperEnv
 
 
@@ -28,7 +27,8 @@ class EnvEval:
         self.mean_return = None
 
         if self.nproc != 1:
-            self.proc_pool = ProcessPoolExecutor(max_workers=nproc)
+            ray.init(ignore_reinit_error=True, num_cpus=nproc)
+            self.estimatorQ.fit_p = ray.remote(estimatorQ.fit)
 
     def fit_baseline(self, k, gamma, n_trajectories, policy=None, iter_max=50, stop_at_len=True, est_kwargs={}, fs_kwargs={}):
         """To be called before other methods as a reset.
@@ -50,6 +50,9 @@ class EnvEval:
         self.wenv.seed(0)
         self.trajectories = episodes_with_len(
             self.wenv, n_trajectories, k, policy=policy, stop_at_len=stop_at_len)
+
+        if self.nproc != 1:
+            self.traj_id = ray.put(self.trajectories)
 
         est = self.itEstimator()
 
@@ -77,9 +80,9 @@ class EnvEval:
             if not self.mean_return:
                 self.mean_return = np.mean(
                     [np.polyval(t[:, -1], self.gamma) for t in self.trajectories])
-            return FakeFuture(lambda x: self.mean_return)
+            return ray.put(lambda x: self.mean_return)
         Q = self.estimatorQ(self.gamma)
-        return self.proc_pool.submit(Q.fit, self.trajectories, S, iter_max=self.iter_max, **self.est_kwargs)
+        return Q.fit_p.remote(Q, self.traj_id, S, iter_max=self.iter_max, **self.est_kwargs)
 
     def _sequential_try_all(self):
         for S, err in self.fs.try_remove_all(self.k, self.gamma, **self.fs_kwargs):
@@ -97,7 +100,7 @@ class EnvEval:
                 res.append((S, err, Q))
 
         for e in tqdm(res, disable=not self.fs_kwargs.get('show_progress', True)):
-            self.subsets.update({e[0]: (e[1], e[2].result())})
+            self.subsets.update({e[0]: (e[1], ray.get(e[2]))})
 
     def try_all(self):
         if self.nproc != 1:

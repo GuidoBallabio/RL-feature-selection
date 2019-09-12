@@ -1,8 +1,8 @@
 import abc
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 from operator import attrgetter
 
+import ray
 from cachetools import cachedmethod
 from cachetools.keys import hashkey
 
@@ -92,16 +92,14 @@ class CachingEstimator():
         return self.estimator.entropy(X)
 
 
-def zero():
-    return 0
-
-
+@ray.remote
 def diff(x, y):
-    return x.result() - y.result()
+    return x - y
 
 
+@ray.remote
 def sumdiff(x, y, z):
-    return x.result() + y.result() - z.result()
+    return x + y - z
 
 
 class MPCachingEstimator():
@@ -114,67 +112,67 @@ class MPCachingEstimator():
         if cached:
             self.cache = {}
 
-        self.proc_pool = ProcessPoolExecutor(max_workers=nproc)
-        self.thread_pool = ThreadPoolExecutor()
+        ray.init(ignore_reinit_error=True, num_cpus=nproc)
+        self.zero = ray.put(0)
+
+        self.estimator.entropy_p = ray.remote(self.estimator.__class__.entropy)
+        self.estimator.mi_p = ray.remote(self.estimator.__class__.mi)
+        self.estimator.cond_entropy_p = ray.remote(
+            self.estimator.__class__.cond_entropy)
+        self.estimator.cmi_p = ray.remote(self.estimator.__class__.cmi)
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'cmi'))
     def estimateCMI(self, X_ids, Y_ids, Z_ids, t=0):
         if not X_ids or not Y_ids:
-            return self.thread_pool.submit(zero)
+            return self.zero
         if not Z_ids:
             return self.estimateMI(X_ids, Y_ids, t)
 
         if not self.direct_cmi:
             if self.direct_mi:
-                return self._defer_diff(self.estimateMI(X_ids, Y_ids.union(Z_ids), t), self.estimateMI(X_ids, Z_ids, t))
+                return diff.remote(self.estimateMI(X_ids, Y_ids.union(Z_ids), t), self.estimateMI(X_ids, Z_ids, t))
             else:
-                return self._defer_diff(self.estimateCH(Y_ids, Z_ids, t), self.estimateCH(Y_ids, Z_ids.union(X_ids), t))
+                return diff.remote(self.estimateCH(Y_ids, Z_ids, t), self.estimateCH(Y_ids, Z_ids.union(X_ids), t))
 
         X = self.data_getter(X_ids, t)
         Y = self.data_getter(Y_ids, t)
         Z = self.data_getter(Z_ids, t)
 
-        return self.proc_pool.submit(self.estimator.cmi, X, Y, Z)
+        return self.estimator.cmi_p.remote(self.estimator, X, Y, Z)
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'ch'))
     def estimateCH(self, X_ids, Y_ids, t=0):
         if not X_ids:
-            return self.thread_pool.submit(zero)
+            return self.zero
         if not Y_ids:
             return self.estimateH(X_ids, t)
 
         if not self.direct_ch:
-            return self._defer_diff(self.estimateH(X_ids.union(Y_ids), t), self.estimateH(Y_ids, t))
+            return diff.remote(self.estimateH(X_ids.union(Y_ids), t), self.estimateH(Y_ids, t))
 
         X = self.data_getter(X_ids, t)
         Y = self.data_getter(Y_ids, t)
 
-        return self.proc_pool.submit(self.estimator.cond_entropy, X, Y)
+        return self.estimator.cond_entropy_p.remote(self.estimator, X, Y)
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'mi'))
     def estimateMI(self, X_ids, Y_ids, t=0):
         if not X_ids or not Y_ids:
-            return self.thread_pool.submit(zero)
+            return self.zero
 
         if not self.direct_mi:
-            return self._defer_sumdiff(self.estimateH(X_ids, t), self.estimateH(Y_ids, t), self.estimateH(X_ids.union(Y_ids), t))
+            return sumdiff.remote(self.estimateH(X_ids, t), self.estimateH(Y_ids, t), self.estimateH(X_ids.union(Y_ids), t))
 
         X = self.data_getter(X_ids, t)
         Y = self.data_getter(Y_ids, t)
 
-        return self.proc_pool.submit(self.estimator.mi, X, Y)
+        return self.estimator.mi_p.remote(self.estimator, X, Y)
 
     @cachedmethod(attrgetter('cache'), key=partial(hashkey, 'h'))
     def estimateH(self, ids, t=0):
         if not ids:
-            return self.thread_pool.submit(zero)
+            return self.zero
 
         X = self.data_getter(ids, t)
 
-        return self.proc_pool.submit(self.estimator.entropy, X)
-
-    def _defer_diff(self, a, b):
-        return self.thread_pool.submit(diff, a, b)
-
-    def _defer_sumdiff(self, a, b, c):
-        return self.thread_pool.submit(sumdiff, a, b, c)
+        return self.estimator.entropy_p.remote(self.estimator, X)

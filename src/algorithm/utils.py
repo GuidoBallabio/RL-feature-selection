@@ -115,14 +115,6 @@ def env_name(env):
     return name
 
 
-class FakeFuture:
-    def __init__(self, obj):
-        self.obj = obj
-
-    def result(self):
-        return self.obj
-
-
 def loaddb():
     with open("benchmarks/all/backward_errors.pkl", 'rb') as fp:
         d = pickle.load(fp)

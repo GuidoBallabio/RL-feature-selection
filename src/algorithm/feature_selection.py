@@ -1,11 +1,12 @@
 import abc
 
 import numpy as np
+import ray
 from tqdm.autonotebook import tqdm
 
 from src.algorithm.info_theory.it_estimator import (CachingEstimator,
                                                     MPCachingEstimator)
-from src.algorithm.utils import FakeFuture, differ, independent_roll, union
+from src.algorithm.utils import differ, independent_roll, union
 
 
 class FeatureSelector(metaclass=abc.ABCMeta):
@@ -17,6 +18,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         if nproc != 1:
             self.itEstimator = MPCachingEstimator(
                 itEstimator, self._get_arrays, nproc=nproc)
+            self.two = ray.put(2)
         else:
             self.itEstimator = CachingEstimator(itEstimator, self._get_arrays)
 
@@ -207,9 +209,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         if self.discrete:
             res.append(self.itEstimator.estimateCH(no_S, S))
         else:
-            res.append(FakeFuture(2))
+            res.append(self.two)
 
-        res = map(lambda x: x.result(), res)
+        res = map(lambda x: ray.get(x), res)
         score = np.fromiter(res, np.float64)
 
         score[score < 0] = 0.0
@@ -253,9 +255,9 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             if self.discrete:
                 res.append(self.itEstimator.estimateCH(no_S_next, S_next))
             else:
-                res.append(FakeFuture(2))
+                res.append(self.two)
 
-        res = map(lambda x: x.result(), tqdm(
+        res = map(lambda x: ray.get(x), tqdm(
             res, leave=False, disable=not show_progress))
         score_mat = np.fromiter(res, np.float64).reshape(k + 1, -1, order='F')
 

@@ -2,7 +2,6 @@ import numpy as np
 from tqdm.autonotebook import tqdm
 
 from src.algorithm.feature_selection import FeatureSelector
-from src.algorithm.utils import FakeFuture
 
 
 class ForwardFeatureSelector(FeatureSelector):
