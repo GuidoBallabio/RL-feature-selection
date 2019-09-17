@@ -90,7 +90,7 @@ class LQG_nD(gym.Env):
         u = np.atleast_1d(u)
         return -0.5*np.asscalar(x.T @ self.Q @ x + u.T @ self.R @ u)
 
-    def step(self, action, render=False):
+    def step(self, action):
         u = np.atleast_1d(action)  # u is a real
 
         cost = self.get_cost(self.state, u)
@@ -174,14 +174,16 @@ class LQG_nD(gym.Env):
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-    def optimalPolicy(self, Sigma=0.0):
+    def gaussianPolicy(self, K, Sigma=0.0):
         if np.isscalar(Sigma):
             Sigma = np.eye(self.action_dim) * Sigma
 
-        K = self.computeOptimalK()
         mu = np.zeros(self.action_dim)
         def action_noise(): return np.random.multivariate_normal(mu, Sigma)
         return lambda x: np.clip(K @ x + action_noise(), -self.max_action, self.max_action)
+
+    def optimalPolicy(self, Sigma=0.0):
+        return self.gaussianPolicy(self.computeOptimalK(), Sigma)
 
     def computeP(self, K):
         """
@@ -214,6 +216,11 @@ class LQG_nD(gym.Env):
 
         return P
 
+    def computeK(self, P):
+        return -self.gamma * \
+            np.linalg.inv(self.R + self.gamma * self.B.T @
+                          P @ self.B) @ self.B.T @ P @ self.A
+
     def computeOptimalK(self):
         """
         This function computes the optimal linear controller associated to the
@@ -224,17 +231,13 @@ class LQG_nD(gym.Env):
 
         """
         P = np.eye(self.n_dim)
-        K = -self.gamma * \
-            np.linalg.inv(self.R + self.gamma * self.B.T @
-                          P @ self.B) @ self.B.T @ P @ self.A
+        K = self.computeK(P)
         equal = False
 
         while not equal:
             K_old = K
             P = self.computeP(K)
-            K = -self.gamma * \
-                np.linalg.inv(self.R + self.gamma * self.B.T @
-                              P @ self.B) @ self.B.T @ P @ self.A
+            K = self.computeK(P)
             equal = np.allclose(K_old, K, atol=0.0001, rtol=0)
 
         return K

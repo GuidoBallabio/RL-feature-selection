@@ -77,8 +77,10 @@ def episodes_with_len(wenv, num_ep, len_ep, policy=None, stop_at_len=True):
             l.append(np.hstack(ep))
     return l
 
+
 def union(a, b):
     return a.union(b)
+
 
 def differ(a, b):
     return a.difference(b)

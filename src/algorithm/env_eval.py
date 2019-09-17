@@ -83,14 +83,18 @@ class EnvEval:
 
     def _sequential_try_all(self):
         for S, err in self.fs.try_remove_all(self.k, self.gamma, **self.fs_kwargs):
-            Q = self._fitQ(S)
-            self.subsets.update({frozenset(S): (err, Q)})
+            S = frozenset(S)
+            if S not in self.subsets:
+                Q = self._fitQ(S)
+                self.subsets.update({S: (err, Q)})
 
     def _parallel_try_all(self):
         res = []
         for S, err in self.fs.try_all(self.k, self.gamma, **self.fs_kwargs):
-            Q = self._fitQ_parallel(S)
-            res.append((frozenset(S), err, Q))
+            S = frozenset(S)
+            if S not in self.subsets:
+                Q = self._fitQ_parallel(S)
+                res.append((S, err, Q))
 
         for e in tqdm(res, disable=not self.fs_kwargs.get('show_progress', True)):
             self.subsets.update({e[0]: (e[1], e[2].result())})
@@ -105,7 +109,6 @@ class EnvEval:
         err = self.fs.scoreSubset(self.k, self.gamma, S)
         Q = self._fitQ(S)
         self.subsets.update({frozenset(S): (err, Q)})
-        return np.linalg.norm(self.subsets[self.fs.idSet] - Q, 2), err
 
     def norm_diff(self):
         if len(self.subsets) == 1:

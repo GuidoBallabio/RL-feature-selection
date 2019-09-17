@@ -5,7 +5,7 @@ from tqdm.autonotebook import tqdm
 
 from src.algorithm.info_theory.it_estimator import (CachingEstimator,
                                                     MPCachingEstimator)
-from src.algorithm.utils import FakeFuture, independent_roll, union, differ
+from src.algorithm.utils import FakeFuture, differ, independent_roll, union
 
 
 class FeatureSelector(metaclass=abc.ABCMeta):
@@ -297,7 +297,8 @@ class FeatureSelector(metaclass=abc.ABCMeta):
                     self.set_reward, target, S_next, t=t)
 
             if self.discrete:
-                score_mat[k, i] = self.itEstimator.estimateCH(no_S_next, S_next)
+                score_mat[k, i] = self.itEstimator.estimateCH(
+                    no_S_next, S_next)
             else:
                 score_mat[k, i] = 2
 
