@@ -103,9 +103,34 @@ def load_list_from_file(filename):
     return data
 
 
+def class_name(x):
+    return type(x).__name__
+
+
+def env_name(env):
+    try:
+        name = env.unwrapped.spec.id
+    except:
+        name = class_name(env)
+    return name
+
+
 class FakeFuture:
     def __init__(self, obj):
         self.obj = obj
 
     def result(self):
         return self.obj
+
+
+def loaddb():
+    with open("benchmarks/all/backward_errors.pkl", 'rb') as fp:
+        d = pickle.load(fp)
+    return d
+
+
+def printdb(d):
+    for x in d:
+        print(x)
+        for l in d[x]:
+            print(l)

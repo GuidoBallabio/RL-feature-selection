@@ -255,8 +255,8 @@ class LQG_nD(gym.Env):
 
         Returns:
             J (float): The discounted reward
-
         """
+
         K = np.atleast_2d(K)
         Sigma = np.atleast_2d(Sigma)
 
@@ -286,8 +286,8 @@ class LQG_nD(gym.Env):
         Returns:
             Qfun (float): The Q-value in the given pair (x,u) under the given
             controller
-
         """
+
         x = np.atleast_1d(x)
         u = np.atleast_1d(u)
         K = np.atleast_2d(K)

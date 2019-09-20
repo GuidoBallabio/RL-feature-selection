@@ -17,11 +17,12 @@ class QfunctionAsSum():
         if features_to_consider is None:
             features_to_consider = list(range(trajectories[0].shape[1]-1))
 
-        n = len(features_to_consider)
+        self.features_to_consider = list(features_to_consider)
+        n = len(self.features_to_consider)
         self.min_len = min([len(t) for t in trajectories])
         self.weights = self.gamma ** np.arange(self.min_len)
 
-        data = np.dstack([t[:self.min_len, features_to_consider + [-1]]
+        data = np.dstack([t[:self.min_len, self.features_to_consider + [-1]]
                           for t in trajectories]).transpose(2, 0, 1)
 
         for i in tqdm(range(self.min_len), disable=not show_progress, leave=leave):

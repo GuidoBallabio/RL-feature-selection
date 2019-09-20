@@ -22,7 +22,7 @@ class QfunctionFQI():
 
         self.features_to_consider = list(features_to_consider)
 
-        n = len(features_to_consider)
+        n = len(self.features_to_consider)
         db = self._make_db(trajectories)
 
         sar = db[:, :n+1]
