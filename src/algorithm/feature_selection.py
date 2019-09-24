@@ -29,7 +29,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.n_features = self.trajectories[0].shape[1] - 1
         self.id_reward = self.n_features
         self.set_reward = frozenset({self.id_reward})
-        self.idSet = frozenset(list(range(self.n_features)))
+        self.idSet = frozenset(range(self.n_features))
         self.idSelected = None
 
         self.tot_t = min(len(tr) for tr in self.trajectories)

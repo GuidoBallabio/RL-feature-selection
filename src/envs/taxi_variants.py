@@ -20,7 +20,7 @@ class TaxiUnraveled(TaxiEnv):
 
 class TaxiBinary(TaxiEnv):
     def decode(self, obs):
-        bin_obs = np.zeros(500)
+        bin_obs = np.zeros(500, dtype=np.bool)
         bin_obs[obs] = 1
         return bin_obs
 

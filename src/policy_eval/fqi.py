@@ -6,7 +6,8 @@ from tqdm.autonotebook import tqdm
 class QfunctionFQI():
     def __init__(self, gamma, regressor=ExtraTreesRegressor, **regr_kwargs):
         self.gamma = gamma
-        self.regressor = regressor(n_estimators=50, **regr_kwargs)
+        self.regressor = regressor(
+            n_estimators=50, min_samples_leaf=4, **regr_kwargs)
 
     def _make_db(self, trajectories):
         sar = [t[:, self.features_to_consider + [-1]] for t in trajectories]
