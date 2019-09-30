@@ -13,6 +13,18 @@ from src.policy_eval.fqi import QfunctionFQI
 from src.wenvs import WrapperEnv
 
 
+def _mean_value(gamma, traj):
+    return np.mean([np.polyval(t[:, -1], gamma) for t in traj])
+
+
+@ray.remote
+def _evalQ(q, gamma, traj, S, mu, est_kwargs):
+    if S is not None and not S:
+        return _mean_value(gamma, traj)
+    Q = q(gamma).fit(traj, S, **est_kwargs)
+    return Q(mu[:, list(S)])
+
+
 class BatchEval:
     def __init__(self, l_env, l_estimator, l_estimatorQ, l_n, l_k, l_gamma,
                  nproc=None, backward=True, **ray_kwargs):
@@ -39,8 +51,6 @@ class BatchEval:
 
         if self.nproc != 1:
             ray.init(ignore_reinit_error=True, **ray_kwargs)
-            for q in self.l_estimatorQ:
-                q.fit_p = ray.remote(q.fit)
 
     def run(self, verbose=1, filename=None, stop_at_len=True, est_kwargs={}, fs_kwargs={}):
         """To be called before other methods as a reset.
@@ -90,6 +100,9 @@ class BatchEval:
             # prepare mu
             mu = fs.data_per_traj[0, :-1, :].T
 
+            if verbose == 2:
+                print("Starting Q eval", flush=True)
+
             for q in self.l_estimatorQ:
                 q_name = q.__name__
                 # policy_eval
@@ -126,29 +139,22 @@ class BatchEval:
     def _fit_all_parallel(self, unique_gs, mu, q, traj_all):
         db_q = {}
         res = []
+        mu_id = ray.put(mu)
         for gamma, S in unique_gs:
-            Q = self._fitQ_parallel(q, gamma, traj_all, S)
-            res.append((gamma, S, Q))
+            Qest = _evalQ.remote(q, gamma, self.traj_id, S, mu_id,
+                                 self.est_kwargs)
+            res.append((gamma, S, Qest))
 
         for x in tqdm(res, disable=not self.fs_kwargs.get('show_progress', True)):
-            gamma, S, Q = x
-            db_q[(gamma, S)] = ray.get(Q)(mu[:, list(S)])
+            gamma, S, Qest = x
+            db_q[(gamma, S)] = ray.get(Qest)
             # arrays long l_n[-1]
         return db_q
 
-    def _mean_value(self, gamma, traj):
-        return (lambda x: np.mean([np.polyval(t[:, -1], gamma) for t in traj]))
-
     def _fitQ(self, q, gamma, traj, S):
         if S is not None and not S:
-            return self._mean_value(gamma, traj)
+            return _mean_value(gamma, traj)
         return q(gamma).fit(traj, S, **self.est_kwargs)
-
-    def _fitQ_parallel(self, q, gamma, traj, S):
-        if S is not None and not S:
-            return ray.put(self._mean_value(gamma, traj))
-        Q = q(gamma)
-        return Q.fit_p.remote(Q, self.traj_id, S, **self.est_kwargs)
 
     def _dump_dict(self, d, file):
         if file is None:
