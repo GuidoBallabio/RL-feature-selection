@@ -5,7 +5,7 @@ import numpy as np
 
 from src.algorithm.batch_eval import BatchEval
 from src.algorithm.info_theory.combo_estimators import (
-    DiscreteEntropyEstimator, FastNNEntropyEstimator, NpeetEstimator)
+    DiscreteEntropyEstimator, DJKEntropyEstimator, NpeetEstimator)
 from src.envs.lqgNdim import LQG_nD
 from src.envs.taxi_variants import TaxiBinary, TaxiUnraveled
 from src.policy_eval.fqi import QfunctionFQI
@@ -37,7 +37,7 @@ def ll():
 
 
 l_env = [lqg, taxi, ll]
-l_est = [DiscreteEntropyEstimator, NpeetEstimator]
+l_est = [DiscreteEntropyEstimator, NpeetEstimator, DJKEntropyEstimator]
 l_q = [QfunctionFQI]
 l_k = [20, 30, 40, 50]
 l_gamma = [0.5, 0.9, 0.95]

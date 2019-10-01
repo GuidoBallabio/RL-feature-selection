@@ -9,6 +9,8 @@ from src.algorithm.info_theory.mutual_information import MixedRvMiEstimator
 
 
 class NpeetEstimator(ItEstimator):
+    discrete = False
+
     def __init__(self):
         pass
 
@@ -31,6 +33,8 @@ class NpeetEstimator(ItEstimator):
 
 
 class CmiEstimator(ItEstimator):
+    discrete = False
+
     def __init__(self, nproc=1):
         self.h_est = NNEntropyEstimator()
         self.mi_est = MixedRvMiEstimator(3, nproc=nproc)
@@ -53,6 +57,7 @@ class CmiEstimator(ItEstimator):
 
 class FastNNEntropyEstimator(ItEstimator):
     EPS = np.finfo(np.float).eps
+    discrete = False
 
     def __init__(self, kfold=10):
         self.kfold = kfold
@@ -92,6 +97,8 @@ class FastNNEntropyEstimator(ItEstimator):
 
 
 class KDEntropyEstimator(ItEstimator):
+    discrete = False
+
     def __init__(self, kernel="gaussian",  min_log_proba=-500, bandwith=1.0, kfold=10):
         self.kde = KernelDensity(kernel=kernel, bandwidth=bandwith)
         self.min_log_proba = min_log_proba
@@ -138,6 +145,8 @@ class KDEntropyEstimator(ItEstimator):
 
 
 class DiscreteEntropyEstimator(ItEstimator):
+    discrete = True
+
     def __init__(self):
         pass
 
@@ -155,3 +164,25 @@ class DiscreteEntropyEstimator(ItEstimator):
 
     def flags(self):
         return True, False, True
+
+
+class DJKEntropyEstimator(ItEstimator):
+    discrete = True
+
+    def __init__(self):
+        pass
+
+    def entropy(self, X):
+        np.random.seed(0)
+        return ee.entropyd_jk(X.copy(order='C'))
+
+    def mi(self, X, Y):
+        np.random.seed(0)
+        return ee.midd(X.copy(order='C'), Y.copy(order='C'))
+
+    def cmi(self, X, Y, Z):
+        np.random.seed(0)
+        return ee.cmidd(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'))
+
+    def flags(self):
+        return False, False, False

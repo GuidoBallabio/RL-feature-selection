@@ -75,7 +75,7 @@ class BatchEval:
             for n in self.l_n:
                 traj = traj_all[:n]
                 for est in self.l_estimator:
-                    if discrete != (est is DiscreteEntropyEstimator):
+                    if discrete != est.discrete:
                         continue
                     fs = self.FS(est(), traj, discrete=discrete,
                                  nproc=self.nproc)
@@ -101,7 +101,7 @@ class BatchEval:
             mu = fs.data_per_traj[0, :-1, :].T
 
             if verbose == 2:
-                print("Starting Q eval", flush=True)
+                print('\n', "Starting Q eval", flush=True)
 
             for q in self.l_estimatorQ:
                 q_name = q.__name__
