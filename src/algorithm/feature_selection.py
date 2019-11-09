@@ -187,7 +187,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         else:
             score[k] = 2
 
-        score[score < 0] = 0.0
+        score = np.clip(score, 0, 2)
         score = np.sqrt(score)
 
         self.residual_error = score[:-1] @ self.weights[:-1]
@@ -214,7 +214,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         res = map(lambda x: ray.get(x), res)
         score = np.fromiter(res, np.float64)
 
-        score[score < 0] = 0.0
+        score = np.clip(score, 0, 2)
         score = np.sqrt(score)
 
         self.residual_error = score[:-1] @ self.weights[:-1]
@@ -261,7 +261,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             res, leave=False, disable=not show_progress))
         score_mat = np.fromiter(res, np.float64).reshape(k + 1, -1, order='F')
 
-        score_mat[score_mat < 0] = 0.0
+        score_mat = np.clip(score_mat, 0, 2)
         scores = np.sqrt(score_mat)
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], scores[:-1, :])
@@ -307,7 +307,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             else:
                 score_mat[k, i] = 2
 
-        score_mat[score_mat < 0] = 0.0
+        score_mat = np.clip(score_mat, 0, 2)
         scores = np.sqrt(score_mat)
 
         cmi_wsum = np.einsum('a, ab->b', self.weights[:-1], scores[:-1, :])
