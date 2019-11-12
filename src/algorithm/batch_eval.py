@@ -27,7 +27,7 @@ def _evalQ(q, gamma, traj, S, mu, est_kwargs):
 
 class BatchEval:
     def __init__(self, l_env, l_estimator, l_estimatorQ, l_n, l_k, l_gamma,
-                 nproc=None, backward=True, **ray_kwargs):
+                 k_ahead=20, nproc=None, backward=True, **ray_kwargs):
         """Batch evalutaion of bound on envs.
 
             l_n, l_k, l_gamma have to be sorted in ascending order
@@ -40,6 +40,7 @@ class BatchEval:
         self.l_gamma = l_gamma
         self.nproc = nproc
         self.backward = backward
+        self.k_ahead = k_ahead
 
         if backward:
             self.FS = BackwardFeatureSelector
@@ -71,12 +72,11 @@ class BatchEval:
             np.random.seed(0)
             wenv.seed(0)
             traj_all = episodes_with_len(
-                wenv, self.l_n[-1], self.l_k[-1], policy=policy, stop_at_len=stop_at_len)
+                wenv, self.l_n[-1], self.l_k[-1] + self.k_ahead, policy=policy,
+                stop_at_len=stop_at_len)
             for n in self.l_n:
                 traj = traj_all[:n]
                 for est in self.l_estimator:
-                    if discrete != est.discrete:
-                        continue
                     fs = self.FS(est(), traj, discrete=discrete,
                                  nproc=self.nproc)
                     for k in self.l_k:

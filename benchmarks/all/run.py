@@ -4,8 +4,7 @@ import gym
 import numpy as np
 
 from src.algorithm.batch_eval import BatchEval
-from src.algorithm.info_theory.combo_estimators import (LNCEstimator,
-                                                        NpeetEstimator)
+from src.algorithm.info_theory.combo_estimators import NpeetEstimator
 from src.envs.lqgNdim import LQG_nD
 from src.envs.taxi_variants import TaxiBinary, TaxiUnraveled
 from src.policy_eval.fqi import QfunctionFQI
@@ -36,8 +35,8 @@ def ll():
     return env, True, False, None
 
 
-l_env = [lqg, ll]
-l_est = [NpeetEstimator, LNCEstimator]
+l_env = [lqg, ll, taxi]
+l_est = [NpeetEstimator]
 l_q = [QfunctionFQI]
 l_k = [20, 30, 40, 50]
 l_gamma = [0.5, 0.9, 0.95]
