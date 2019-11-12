@@ -29,6 +29,8 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         self.n_features = self.trajectories[0].shape[1] - 1
         self.id_reward = self.n_features
         self.set_reward = frozenset({self.id_reward})
+        self.id_J_k = -1
+        self.set_J_k = frozenset({self.id_J_k})
         self.idSet = frozenset(range(self.n_features))
         self.idSelected = None
 
@@ -71,7 +73,10 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
             self.t_step_data.append(np.vstack(t_step_eps))
 
-        self.t_step_data = np.dstack(self.t_step_data)
+        if self.t_step_data:
+            self.t_step_data = np.dstack(self.t_step_data)
+        else:
+            self.t_step_data = np.empty((self.data_per_traj.shape[-1], 1, 1))
 
     def _get_arrays(self, ids, t):
         if not isinstance(ids, list):
@@ -79,9 +84,13 @@ class FeatureSelector(metaclass=abc.ABCMeta):
 
         # memory efficiency
         if self.on_mu:
-            feats = self.data_per_traj[0, :-1, :].T
+            if t == self.t_step_data.shape[2]:
+                ft, t = t, 0
+            else:
+                ft = 0
+            feats = self.data_per_traj[ft, :-1, :].T
             rew = self.t_step_data[:, 0, t][:, None]
-            data = np.hstack([feats, rew])
+            data = np.hstack([feats, rew, self.J_k])
             return data[:, ids]
 
         return self.t_step_data[:, ids, t]
@@ -111,26 +120,30 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         k = len(steplist)
         gamma = gamma
 
-        weights = np.ones(k + 1) * gamma
-        weights[:-1] = weights[:-1] ** steplist
+        weights = np.ones(k + 1)
+        weights[:-1] = gamma ** steplist
 
-        weights[k] = 1/(1 - gamma) - weights[:-1].sum()
+        weights[k] = 1 - (1 - gamma) * weights[:-1].sum()
 
         if use_Rt:
             Rsteps = self.Rts[steplist]
             weights[:-1] *= Rsteps
 
-            mask = np.ones_like(self.Rts, dtype=np.bool)
-            mask[steplist] = False
-            weights[k] *= self.Rts[mask].max() if mask.any() else self.Rmax
+            weights[k] *= self.max_J_k
 
         return weights
+
+    def _prep_J_k(self, k, gamma):
+        self.J_k = np.polyval(
+            self.data_per_traj[k:, -1, :], gamma).reshape(-1, 1)
+        self.max_J_k = np.abs(self.J_k).max()
 
     def _prep_all(self, k, gamma, sampling, freq, use_Rt, on_mu):
         self.reset()
         steplist, max_t = self._generate_steplist(k, sampling, freq)
         self.steplist = steplist
         self._prep_data(max_t, on_mu)
+        self._prep_J_k(k, gamma)
         self.weights = self._get_weights_by_steplist(steplist, gamma, use_Rt)
 
         return steplist
@@ -157,7 +170,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
         else:
             Rmax = self.Rmax
 
-        return 2**(1/2) * Rmax * (residual + correction)
+        return 2**(1/2) * (Rmax * residual + correction)
 
     def reset(self):
         self.residual_error = 0
@@ -182,10 +195,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             score[j] = self.itEstimator.estimateCMI(
                 self.set_reward, no_S, S, t=t)
 
-        if self.discrete:
-            score[k] = self.itEstimator.estimateCH(no_S, S)
-        else:
-            score[k] = 2
+        score[k] = self.itEstimator.estimateCMI(self.set_J_k, no_S, S, t=k)
 
         score = np.clip(score, 0, 2)
         score = np.sqrt(score)
@@ -206,10 +216,7 @@ class FeatureSelector(metaclass=abc.ABCMeta):
             res.append(self.itEstimator.estimateCMI(
                 self.set_reward, no_S, S, t=t))
 
-        if self.discrete:
-            res.append(self.itEstimator.estimateCH(no_S, S))
-        else:
-            res.append(self.two)
+        res.append(self.itEstimator.estimateCMI(self.set_J_k, no_S, S, t=k))
 
         res = map(lambda x: ray.get(x), res)
         score = np.fromiter(res, np.float64)
@@ -252,10 +259,8 @@ class FeatureSelector(metaclass=abc.ABCMeta):
                 res.append(self.itEstimator.estimateCMI(
                     self.set_reward, target, S_next, t=t))
 
-            if self.discrete:
-                res.append(self.itEstimator.estimateCH(no_S_next, S_next))
-            else:
-                res.append(self.two)
+            res.append(self.itEstimator.estimateCMI(self.set_J_k, target,
+                                                    S_next, t=k))
 
         res = map(lambda x: ray.get(x), tqdm(
             res, leave=False, disable=not show_progress))
@@ -301,11 +306,8 @@ class FeatureSelector(metaclass=abc.ABCMeta):
                 score_mat[j, i] = self.itEstimator.estimateCMI(
                     self.set_reward, target, S_next, t=t)
 
-            if self.discrete:
-                score_mat[k, i] = self.itEstimator.estimateCH(
-                    no_S_next, S_next)
-            else:
-                score_mat[k, i] = 2
+            score_mat[k, i] = self.itEstimator.estimateCMI(
+                self.set_J_k, target, S_next, t=k)
 
         score_mat = np.clip(score_mat, 0, 2)
         scores = np.sqrt(score_mat)

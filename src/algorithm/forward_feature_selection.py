@@ -22,7 +22,7 @@ class ForwardFeatureSelector(FeatureSelector):
         steplist = self._prep_all(k, gamma, sampling, freq, use_Rt, on_mu)
 
         if sum_cmi:
-            self.scores = np.zeros(k)
+            self.scores = np.zeros(k+1)
 
         for i in tqdm(range(self.n_features - n), disable=not show_progress):
             scores = self.scoreFeatures(
@@ -31,11 +31,13 @@ class ForwardFeatureSelector(FeatureSelector):
             self.idSelected.add(scores[0][0])
 
             if sum_cmi:
-                self.scores += scores[3][:-1, 0]
-                self.residual_error = np.sqrt(self.scores) @ self.weights[:-1]
+                self.scores += scores[3][:, 0]
+                self.residual_error = np.sqrt(
+                    self.scores[:-1]) @ self.weights[:-1]
+                self.correction_term = self.scores[-1] * self.weights[-1]
             else:
                 self.residual_error = scores[1][0]
-            self.correction_term = scores[2][0]
+                self.correction_term = scores[2][0]
             error = self.computeError(use_Rt=use_Rt)
 
         return self.idSelected.copy(), error
@@ -46,7 +48,7 @@ class ForwardFeatureSelector(FeatureSelector):
         if max_n is None:
             max_n = self.n_features
         if sum_cmi:
-            self.scores = np.zeros(k)
+            self.scores = np.zeros(k+1)
 
         for i in tqdm(range(max_n), disable=not show_progress):
             scores = self.scoreFeatures(
@@ -55,11 +57,13 @@ class ForwardFeatureSelector(FeatureSelector):
             self.idSelected.add(scores[0][0])
 
             if sum_cmi:
-                self.scores += scores[3][:-1, 0]
-                self.residual_error = np.sqrt(self.scores) @ self.weights[:-1]
+                self.scores += scores[3][:, 0]
+                self.residual_error = np.sqrt(
+                    self.scores[:-1]) @ self.weights[:-1]
+                self.correction_term = self.scores[-1] * self.weights[-1]
             else:
                 self.residual_error = scores[1][0]
-            self.correction_term = scores[2][0]
+                self.correction_term = scores[2][0]
             error = self.computeError(use_Rt=use_Rt)
 
             if all_scores:
@@ -72,7 +76,7 @@ class ForwardFeatureSelector(FeatureSelector):
 
         error = 0.0
         if sum_cmi:
-            self.scores = np.zeros(k)
+            self.scores = np.zeros(k+1)
 
         with tqdm(total=100, disable=not show_progress) as pbar:  # tqdm
             while error <= max_error and len(self.idSelected) < self.n_features:
@@ -80,11 +84,13 @@ class ForwardFeatureSelector(FeatureSelector):
                     steplist, gamma, sum_cmi, show_progress=show_progress)
 
                 if sum_cmi:
-                    self.scores += scores[3][:-1, 0]
-                    new_cmi_term = np.sqrt(self.scores) @ self.weights[:-1]
+                    self.scores += scores[3][:, 0]
+                    new_cmi_term = np.sqrt(
+                        self.scores[:-1]) @ self.weights[:-1]
+                    new_corr_term = self.scores[-1] * self.weights[-1]
                 else:
                     new_cmi_term = scores[1][0]
-                new_corr_term = scores[2][0]
+                    new_corr_term = scores[2][0]
                 new_error = self.computeError(
                     new_cmi_term, new_corr_term, use_Rt)
 
