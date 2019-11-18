@@ -1,5 +1,6 @@
 import pickle
 import tempfile
+from pathlib import Path
 
 import numpy as np
 import ray
@@ -21,7 +22,7 @@ def _mean_value(gamma, traj):
 def _evalQ(q, gamma, traj, S, mu, est_kwargs):
     if S is not None and not S:
         return _mean_value(gamma, traj)
-    Q = q(gamma).fit(traj, S, **est_kwargs)
+    Q = q(gamma, random_state=0).fit(traj, S, **est_kwargs)
     return Q(mu[:, list(S)])
 
 
@@ -61,9 +62,11 @@ class BatchEval:
         """
         self.est_kwargs = est_kwargs
         self.fs_kwargs = fs_kwargs
+        out_dir = Path(filename).absolute().parent
 
         for f_env in self.l_env:
             env, cs, ca, policy = f_env()
+            env_n = env_name(env)
             wenv = WrapperEnv(env, continuous_state=cs, continuous_actions=ca)
             discrete = not (cs or ca)
             # create n traj long k (move in l_k? probelm with policy and stop?)
@@ -74,6 +77,9 @@ class BatchEval:
             traj_all = episodes_with_len(
                 wenv, self.l_n[-1], self.l_k[-1] + self.k_ahead, policy=policy,
                 stop_at_len=stop_at_len)
+            if verbose == 2:
+                self._dump_data(traj_all, out_dir / ("trajectories-" + env_n +
+                    ".pkl"))
             for n in self.l_n:
                 traj = traj_all[:n]
                 for est in self.l_estimator:
@@ -81,7 +87,7 @@ class BatchEval:
                                  nproc=self.nproc)
                     for k in self.l_k:
                         for gamma in self.l_gamma:
-                            key = (env_name(env), est.__name__, n, k, gamma)
+                            key = (env_n, est.__name__, n, k, gamma)
                             if verbose == 2:
                                 print('\n', key, flush=True)
                             res = [(set(fs.idSet),
@@ -89,7 +95,7 @@ class BatchEval:
                             res += list(fs.try_all(k, gamma))
                             db[key] = res
                 if verbose == 2:
-                    self._dump_dict(db, filename)
+                    self._dump_data(db, filename)
 
             if self.nproc != 1:
                 self.traj_id = ray.put(traj_all)
@@ -113,7 +119,7 @@ class BatchEval:
 
                 self._norm_diff(q_name, db, db_q, fs.idSet)
                 if verbose >= 1:
-                    self._dump_dict(self.bounds, filename)
+                    self._dump_data(self.bounds, filename)
                 db_q.clear()
 
         return self.bounds
@@ -154,9 +160,9 @@ class BatchEval:
     def _fitQ(self, q, gamma, traj, S):
         if S is not None and not S:
             return _mean_value(gamma, traj)
-        return q(gamma).fit(traj, S, **self.est_kwargs)
+        return q(gamma, random_state=0).fit(traj, S, **self.est_kwargs)
 
-    def _dump_dict(self, d, file):
+    def _dump_data(self, d, file):
         if file is None:
             file = tempfile.mktemp() + ".pkl"
             print("Dict dumped in " + file)
