@@ -126,7 +126,7 @@ class EnvEval:
             err, Q = self.subsets[S]
             mu = self.mu[:, list(S)]
             Q = Q(mu)
-            norm = np.linalg.norm(baseQ - Q, 2)
+            norm = np.linalg.norm(baseQ - Q, 2) / (len(baseQ)**0.5)
             res.append((S, norm, err))
 
         res = sorted(res, key=lambda x: len(x[0]), reverse=True)

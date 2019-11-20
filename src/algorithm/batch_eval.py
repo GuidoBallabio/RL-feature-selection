@@ -175,7 +175,7 @@ class BatchEval:
         for k, Q in db_q.items():
             gamma, S = k
             baseQ = db_q[(gamma, idSet)]
-            norm = np.linalg.norm(baseQ - Q, 2)
+            norm = np.linalg.norm(baseQ - Q, 2) / (len(baseQ)**0.5)
             db_diff[k] = norm
 
         for key, l_bound in db.items():
