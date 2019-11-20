@@ -120,6 +120,8 @@ class BatchEval:
                 self._norm_diff(q_name, db, db_q, fs.idSet)
                 if verbose >= 1:
                     self._dump_data(self.bounds, filename)
+                if verbose == 2:
+                    self._dump_data(db_q, out_dir / ("Qfun" + env_n + ".pkl"))
                 db_q.clear()
 
         return self.bounds
