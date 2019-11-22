@@ -11,21 +11,21 @@ from src.algorithm.info_theory.mutual_information import MixedRvMiEstimator
 class NpeetEstimator(ItEstimator):
     discrete = False
 
-    def __init__(self):
-        pass
+    def __init__(self, k=3):
+        self.k = k
 
     def entropy(self, X):
         np.random.seed(0)
-        return ee.entropy(X.copy(order='C'))
+        return ee.entropy(X.copy(order='C'), k=self.k)
 
     def mi(self, X, Y):
         np.random.seed(0)
-        r = ee.mi(X.copy(order='C'), Y.copy(order='C'))
+        r = ee.mi(X.copy(order='C'), Y.copy(order='C'), k=self.k)
         return r if r >= 0 else 0
 
     def cmi(self, X, Y, Z):
         np.random.seed(0)
-        r = ee.mi(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'))
+        r = ee.mi(X.copy(order='C'), Y.copy(order='C'), z=Z.copy(order='C'), k=self.k)
         return r if r >= 0 else 0
 
     def flags(self):
